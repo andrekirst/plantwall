@@ -21,7 +21,8 @@
   "dependencies": {
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "axios": "latest"
   },
   "devDependencies": {
     "typescript": "latest",
