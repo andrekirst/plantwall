@@ -12,6 +12,7 @@ Plant wall control system with dual architecture:
 ## Backend Technology Choice
 
 **Go is used for the backend** for the following reasons:
+
 - Better resource efficiency for Raspberry Pi Zero 2W
 - Smaller binary size and lower memory footprint compared to Python
 - Excellent GPIO library support for hardware control
@@ -103,3 +104,61 @@ docker-compose up --build  # Rebuild and start services
 - Optimized for Raspberry Pi Zero 2W and higher
 - GPIO libraries and hardware modules designed for Pi compatibility
 - Cross-compilation from development machine to ARM architecture supported
+
+## Context7 MCP Integration
+
+**Context7 MCP** ist verfügbar für up-to-date Dokumentation und Code-Beispiele. 
+
+### Installation
+```bash
+claude mcp add context7 -- npx -y @upstash/context7-mcp@latest
+```
+
+### Usage
+Füge `use context7` zu deinen Prompts hinzu für:
+- **Aktuelle Go-Dokumentation** für GPIO-Bibliotheken (periph.io, rpio)
+- **Next.js App Router** up-to-date Patterns und Best Practices
+- **TypeScript** aktuelle API-Referenzen und Type-Definitionen
+- **Tailwind CSS** neueste Utility-Classes und Responsive Design
+- **Home Assistant** MQTT Discovery und Entity-Konfiguration
+- **Raspberry Pi** spezifische Optimierungen und Hardware-APIs
+
+### Beispiele
+```
+Erstelle GPIO-Steuerung für Bewässerungspumpe mit periph.io. use context7
+
+Implementiere Next.js App Router für Plant Wall Dashboard. use context7
+
+Konfiguriere Home Assistant MQTT Discovery für IoT-Sensoren. use context7
+```
+
+**Vorteile:**
+- Eliminiert veraltete API-Vorschläge
+- Versionsspezifische Code-Beispiele
+- Reduziert Debugging von deprecated Methods
+- Direkter Zugriff auf aktuelle Dokumentation ohne Tab-Wechsel
+
+## Claude Code Sub-Agenten
+
+Verwende spezialisierte Sub-Agenten für spezifische Aufgaben:
+
+```bash
+# Syntax: @agent-name [Aufgabe]
+@go-experte Implementiere GPIO-Steuerung für Wasserpumpe
+@nextjs-experte Erstelle Dashboard-Komponente für Sensor-Daten
+@pflanzenwand-experte Empfehle Pflanzenarten für automatische Bewässerung
+```
+
+### Verfügbare Sub-Agenten
+
+1. **go-experte** - Go-Programmierung für Backend
+2. **nextjs-experte** - Next.js Frontend-Entwicklung  
+3. **tailwind-experte** - Tailwind CSS für Design
+4. **typescript-experte** - TypeScript-Entwicklung
+5. **devops-experte** - Deployment und CI/CD
+6. **gpio-experte** - Hardware GPIO-Programmierung
+7. **raspberry-pi-experte** - Raspberry Pi Optimierung
+8. **iot-sensoren-experte** - IoT-Sensorik und Hardware
+9. **anforderungsmanagement** - Requirements Engineering
+10. **home-assistant-experte** - Home Assistant Integration
+11. **pflanzenwand-experte** - Konstruktion, Pflanzenauswahl und IoT-Integration
