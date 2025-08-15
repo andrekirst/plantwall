@@ -9,6 +9,27 @@ Plant wall control system with dual architecture:
 - **Backend** (`src/plant-wall-control/`): Go-based REST API for Raspberry Pi hardware control
 - **Frontend** (`src/plant-wall-control-web/`): Next.js/TypeScript web application
 
+## Development Workflow
+
+**WICHTIG**: Verwende IMMER die passenden Sub-Agenten für spezifische Aufgaben:
+
+- **Hardware-Aufgaben**: `@gpio-experte` oder `@raspberry-pi-experte`
+- **Go Backend**: `@go-experte`  
+- **Frontend Development**: `@nextjs-experte`, `@tailwind-experte`, `@typescript-experte`
+- **Deployment**: `@devops-experte`
+- **Anforderungen**: `@anforderungsmanagement`
+- **IoT Sensoren**: `@iot-sensoren-experte`
+- **Smart Home**: `@home-assistant-experte`
+- **Pflanzenwand**: `@pflanzenwand-experte`
+
+Beispiele:
+```
+@gpio-experte Implementiere Button-Steuerung mit Debouncing
+@go-experte Erstelle REST API für Pumpensteuerung
+@nextjs-experte Baue Dashboard für Sensor-Monitoring
+@pflanzenwand-experte Empfehle Pflanzenarten für automatische Bewässerung
+```
+
 ## Backend Technology Choice
 
 **Go is used for the backend** for the following reasons:
@@ -162,3 +183,6 @@ Verwende spezialisierte Sub-Agenten für spezifische Aufgaben:
 9. **anforderungsmanagement** - Requirements Engineering
 10. **home-assistant-experte** - Home Assistant Integration
 11. **pflanzenwand-experte** - Konstruktion, Pflanzenauswahl und IoT-Integration
+
+- Beim Beginn eines Issues, wird auf GitHub von main aus ein neuen Branch für einen Issue erzeugt und auf dem gearbeitet. Es wird nie direkt auf main gearbeitet, wenn ein Issue abgearbeitet wird.
+- Wenn du einen Issue bearbeitest, committe sinnvoll und regelmäig, damit keine Arbeit verloren geht
