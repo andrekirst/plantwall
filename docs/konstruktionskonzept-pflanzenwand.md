@@ -762,37 +762,33 @@ type OverwateredState struct{}
 type MaintenanceState struct{}
 ```
 
-**8. CQRS Pattern (Command Query Responsibility Segregation):**
+**8. CQS Pattern (Command Query Separation):**
 ```go
-// Commands (Write Side)
-type WaterPlantCommand struct {
-    ModuleID string
-    Duration time.Duration
-    UserID   string
+// Commands - change state, return error only
+func (s *PlantService) WaterModule(moduleID string, duration time.Duration) error {
+    module, err := s.repo.GetByID(moduleID)
+    if err != nil {
+        return err
+    }
+    
+    // Execute watering command
+    err = s.irrigationController.Water(moduleID, duration)
+    if err != nil {
+        return err
+    }
+    
+    // Update state
+    module.LastWatered = time.Now()
+    return s.repo.Update(module)
 }
 
-type WaterPlantHandler struct {
-    repo PlantModuleRepository
-    eventBus EventBus
+// Queries - return data, never change state  
+func (s *PlantService) GetModuleStatus(moduleID string) (*PlantModule, error) {
+    return s.repo.GetByID(moduleID)
 }
 
-func (h *WaterPlantHandler) Handle(cmd WaterPlantCommand) error {
-    // Execute watering
-    // Publish event
-    return h.eventBus.Publish(PlantWateredEvent{...})
-}
-
-// Queries (Read Side)
-type GetPlantStatusQuery struct {
-    ModuleID string
-}
-
-type PlantStatusView struct {
-    ID           string
-    PlantType    string
-    LastWatered  time.Time
-    MoistureLevel float64
-    Status       string
+func (s *PlantService) GetSensorReadings(moduleID string, since time.Time) ([]*SensorReading, error) {
+    return s.repo.GetSensorData(moduleID, since)
 }
 ```
 
