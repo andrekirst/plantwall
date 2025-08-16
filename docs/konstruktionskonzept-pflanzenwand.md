@@ -650,204 +650,45 @@ _Preise inkl. MwSt., ohne Arbeitszeit_
 - **Server-Side Rendering:** App Router mit Server Components
 - **WebSocket Integration:** Real-Time Updates für Sensor-Daten
 
-### 8.3 Anbindung an bestehende Go/Next.js Architektur
+### 8.3 Integration in bestehende Architektur
 
-**Neue Go-Packages erforderlich:**
+**Erforderliche Erweiterungen:**
 
-```go
-// Erweiterung der Hardware-Abstraction-Layer
-src/plant-wall-control/hardware/
-├── sensors/
-│   ├── ph_sensor.go         // pH-Wert Messung
-│   ├── ec_sensor.go         // Leitfähigkeit
-│   ├── moisture_sensor.go   // Bodenfeuchtigkeit
-│   └── environment.go       // Temp/Humidity/Light
-├── irrigation/
-│   ├── pump_control.go      // Pumpen-Steuerung
-│   ├── valve_control.go     // Ventil-Management
-│   └── dosing_system.go     // Nährstoff-Dosierung
-└── monitoring/
-    ├── data_logger.go       // Sensor-Datensammlung
-    ├── alerts.go           // Alarm-System
-    └── automation.go       // Bewässerungs-Automatik
-```
+**Backend (Go):**
+- Hardware-Abstraction-Layer für Sensoren und Bewässerung
+- API-Endpunkte für Pflanzenverwaltung und Monitoring
+- Event-System für automatisierte Reaktionen
+- Datenpersistierung für Sensor-Logs und Konfiguration
 
-**Integration in bestehende main.go:**
+**Frontend (Next.js):**
+- Dashboard-Komponenten für 20 Pflanzmodule
+- Real-Time Datenvisualisierung (Charts, Gauges)
+- Steuerelemente für manuelle Bewässerung
+- Benachrichtigungssystem für Wartungsalerts
 
-```go
-func main() {
-    // Bestehende Initialisierung...
-
-    // Neue Hardware-Module
-    sensorManager := sensors.NewManager()
-    irrigationController := irrigation.NewController()
-    monitoringSystem := monitoring.NewSystem()
-
-    // API-Routen erweitern
-    router.HandleFunc("/api/sensors", handleSensors)
-    router.HandleFunc("/api/irrigation", handleIrrigation)
-    router.HandleFunc("/api/monitoring", handleMonitoring)
-    router.HandleFunc("/api/plants/{id}", handlePlantControl)
-}
-```
-
-### 8.2 Hardware-Abstraction-Layer Erweiterungen
-
-**Sensor-Interface (sensors/interface.go):**
-
-```go
-type SensorManager interface {
-    ReadPH(zone int) (float64, error)
-    ReadEC(zone int) (float64, error)
-    ReadMoisture(zone int) (float64, error)
-    ReadEnvironment(zone int) (EnvData, error)
-    CalibrateAllSensors() error
-}
-
-type EnvData struct {
-    Temperature float64 `json:"temperature"`
-    Humidity    float64 `json:"humidity"`
-    LightLevel  float64 `json:"lightLevel"`
-    Timestamp   time.Time `json:"timestamp"`
-}
-```
-
-**Irrigation-Interface (irrigation/interface.go):**
-
-```go
-type IrrigationController interface {
-    StartWatering(zones []int, duration time.Duration) error
-    StopWatering(zones []int) error
-    SetNutrientConcentration(ecTarget float64) error
-    GetSystemStatus() IrrigationStatus
-    ScheduleWatering(schedule WateringSchedule) error
-}
-
-type WateringSchedule struct {
-    Zones       []int     `json:"zones"`
-    StartTime   time.Time `json:"startTime"`
-    Duration    time.Duration `json:"duration"`
-    Frequency   time.Duration `json:"frequency"`
-    NutrientEC  float64   `json:"nutrientEC"`
-}
-```
-
-### 8.3 API-Endpunkte für neue Hardware-Komponenten
-
-**Neue REST-Endpunkte:**
-
-**Sensor-Daten:**
-
-```
-GET  /api/sensors                    // Alle aktuellen Sensorwerte
-GET  /api/sensors/{zone}             // Spezifische Zone
-GET  /api/sensors/history/{hours}    // Historische Daten
-POST /api/sensors/calibrate          // Sensor-Kalibrierung
-```
-
-**Bewässerungs-Steuerung:**
-
-```
-GET  /api/irrigation/status          // Aktueller Bewässerungs-Status
-POST /api/irrigation/start           // Manuell starten
-POST /api/irrigation/stop            // Stoppen
-GET  /api/irrigation/schedule        // Zeitpläne abrufen
-POST /api/irrigation/schedule        // Neuen Zeitplan erstellen
-```
-
-**Pflanzen-Management:**
-
-```
-GET  /api/plants                     // Alle Pflanzen-Status
-GET  /api/plants/{id}                // Einzelne Pflanze
-POST /api/plants/{id}/water          // Gezielt bewässern
-POST /api/plants/{id}/light          // Beleuchtung anpassen
-```
-
-**Frontend-Integration (React-Komponenten):**
-
-**Neue Komponenten erforderlich:**
-
-```typescript
-// src/components/PlantWall/
-├── SensorDashboard.tsx      // Echtzeit-Sensorwerte
-├── IrrigationControl.tsx    // Bewässerungs-Interface
-├── PlantGrid.tsx           // 42-Fächer Übersicht
-├── ZoneManager.tsx         // 3-Zonen Verwaltung
-├── ScheduleEditor.tsx      // Zeitplan-Editor
-└── AlertsPanel.tsx         // Alarm-Anzeige
-```
-
-**Datenstrukturen (types/plantwall.ts):**
-
-```typescript
-interface PlantWallStatus {
-  zones: ZoneStatus[];
-  irrigation: IrrigationStatus;
-  alerts: Alert[];
-  systemHealth: HealthStatus;
-}
-
-interface ZoneStatus {
-  id: number;
-  plants: PlantStatus[];
-  sensors: SensorReading[];
-  lastWatered: Date;
-  nextWatering: Date;
-}
-
-interface PlantStatus {
-  id: number;
-  position: { row: number; col: number };
-  species: string;
-  health: "excellent" | "good" | "warning" | "critical";
-  daysSincePlanted: number;
-  moisture: number;
-  nutrients: number;
-}
-```
-
-**API-Client Erweiterung (utils/api.ts):**
-
-```typescript
-export const plantWallAPI = {
-  // Sensor-Daten
-  getSensorData: () => api.get<SensorReading[]>("/sensors"),
-  getSensorHistory: (hours: number) =>
-    api.get<SensorReading[]>(`/sensors/history/${hours}`),
-
-  // Bewässerung
-  getIrrigationStatus: () => api.get<IrrigationStatus>("/irrigation/status"),
-  startWatering: (zones: number[], duration: number) =>
-    api.post("/irrigation/start", { zones, duration }),
-
-  // Pflanzen
-  getPlants: () => api.get<PlantStatus[]>("/plants"),
-  waterPlant: (plantId: number, amount: number) =>
-    api.post(`/plants/${plantId}/water`, { amount }),
-};
-```
+**Kompatibilität:**
+Die Erweiterungen bauen vollständig auf der bestehenden Go/Next.js-Architektur auf und erweitern diese um die spezifischen Anforderungen der Raumklima-Pflanzenwand.
 
 ---
 
 ## Fazit
 
-Dieses Konstruktionskonzept bietet eine vollständig automatisierte, skalierbare Pflanzenwand-Lösung mit professioneller IoT-Integration. Der modulare Aufbau ermöglicht spätere Erweiterungen und Anpassungen.
+Dieses Konstruktionskonzept bietet eine vollständig automatisierte Raumklima-Pflanzenwand mit professioneller IoT-Integration. Der modulare Aufbau ermöglicht spätere Erweiterungen und Anpassungen.
 
 **Kernvorteile:**
 
-- ✅ Vollautomatisierte Pflege (95% weniger manueller Aufwand)
+- ✅ Deutliche Verbesserung der Raumluftqualität  
+- ✅ Automatisierte Pflege (95% weniger manueller Aufwand)
 - ✅ Skalierbar für größere Installationen
 - ✅ Professionelle Sensorüberwachung in Echtzeit
-- ✅ Integration in bestehende Smart-Home-Systeme
-- ✅ Niedrige Betriebskosten (30€/Jahr Strom + Nährstoffe)
-- ✅ ROI durch höhere Erträge und Zeitersparnis
+- ✅ Bodenständer-Konstruktion für alle Wandtypen
+- ✅ Luftreinigende Pflanzen nach NASA Clean Air Study
 
-**Empfohlene Pflanzenarten für Hydroponik:**
+**Empfohlene luftreinigende Pflanzen:**
 
-- Salate: Kopfsalat, Rucola, Feldsalat
-- Kräuter: Basilikum, Petersilie, Schnittlauch, Thymian
-- Gemüse: Cherry-Tomaten, Paprika, Gurken (Mini)
-- Grünfutter: Spinat, Mangold, Pak Choi
+- **Hauptpflanzen:** Bogenhanf, Efeutute, Friedenslilie, Gummibaum
+- **Ergänzungen:** Grünlilie, Drachenbaum, Aloe Vera, Bambus-Palme
+- **Luftreinigung:** Formaldehyd, Benzol, Ammoniak, Xylol-Filterung
+- **Zusatznutzen:** Sauerstoffproduktion, Luftfeuchtigkeit-Regulierung
 
-Die Gesamtinvestition von ca. 3.500€ amortisiert sich über 2-3 Jahre durch Einsparungen bei Lebensmitteleinkäufen und den Mehrwert einer automatisierten Anlage.
+Das System verbessert messbar das Raumklima und schafft eine beeindruckende, lebendige Atmosphäre bei minimaler Wartung.
