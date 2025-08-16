@@ -592,7 +592,361 @@ _Preise inkl. MwSt., ohne Arbeitszeit_
 
 ## 8. Software-Integration
 
-### 8.1 Anbindung an bestehende Go/Next.js Architektur
+### 8.1 Software-Architektur und Design Patterns
+
+**Clean Architecture mit Domain-Driven Design:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Presentation Layer                   │ ← Next.js Frontend
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐
+│  │   Dashboard     │  │   API Routes    │  │ Components  │
+│  │   (React)       │  │   (Next.js)     │  │  (React)    │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘
+└─────────────────────────────────────────────────────────┘
+              │ HTTP REST API + WebSocket
+┌─────────────────────────────────────────────────────────┐
+│                 Application Layer (Go)                  │ ← Go Backend
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐
+│  │ HTTP Handlers   │  │ WebSocket Hub   │  │   Services  │
+│  │ (Gin/Fiber)     │  │ (Gorilla WS)    │  │ (Use Cases) │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘
+└─────────────────────────────────────────────────────────┘
+              │ Interface Adapters
+┌─────────────────────────────────────────────────────────┐
+│                   Domain Layer (Go)                     │ ← Business Logic
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐
+│  │   Entities      │  │  Repositories   │  │ Domain      │
+│  │ (PlantModule)   │  │ (Interfaces)    │  │ Services    │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘
+└─────────────────────────────────────────────────────────┘
+              │ Dependency Inversion
+┌─────────────────────────────────────────────────────────┐
+│              Infrastructure Layer (Go)                  │ ← Hardware/Data
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐
+│  │ GPIO Hardware   │  │ SQLite/JSON     │  │   Config    │
+│  │ (periph.io)     │  │ (Persistence)   │  │ Management  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘
+└─────────────────────────────────────────────────────────┘
+```
+
+**Angewendete Design Patterns:**
+
+**1. Repository Pattern (Data Access):**
+```go
+// Domain Interface (interface/repository.go)
+type PlantModuleRepository interface {
+    GetAll() ([]*PlantModule, error)
+    GetByID(id string) (*PlantModule, error)
+    Update(module *PlantModule) error
+    GetSensorData(moduleID string, timeframe time.Duration) ([]*SensorReading, error)
+}
+
+// Infrastructure Implementation (infrastructure/sqlite_repo.go)
+type SQLitePlantModuleRepo struct {
+    db *sql.DB
+}
+
+func (r *SQLitePlantModuleRepo) GetByID(id string) (*PlantModule, error) {
+    // SQL implementation
+}
+```
+
+**2. Observer Pattern (Event-Driven Architecture):**
+```go
+// Domain Events (domain/events.go)
+type EventBus struct {
+    subscribers map[string][]chan Event
+    mutex       sync.RWMutex
+}
+
+type SensorEvent struct {
+    ModuleID  string
+    Sensor    string
+    Value     float64
+    Timestamp time.Time
+}
+
+// Auto-triggering irrigation based on sensor events
+func (s *IrrigationService) OnMoistureChanged(event SensorEvent) {
+    if event.Value < s.threshold {
+        s.TriggerWatering(event.ModuleID)
+    }
+}
+```
+
+**3. Strategy Pattern (Plant Care Strategies):**
+```go
+// Different care strategies per plant type
+type CareStrategy interface {
+    GetWateringSchedule(plant *PlantModule) Schedule
+    GetOptimalMoisture() (min, max float64)
+    GetLightRequirements() LightSpec
+}
+
+type SansevieriaStrategy struct{}  // Drought-resistant
+type FicusStrategy struct{}        // Regular watering
+type SpathiphyllumStrategy struct{} // High humidity
+```
+
+**4. Factory Pattern (Sensor & Hardware Creation):**
+```go
+type HardwareFactory interface {
+    CreateSensor(sensorType string, config SensorConfig) (Sensor, error)
+    CreateActuator(actuatorType string, config ActuatorConfig) (Actuator, error)
+}
+
+func (f *DefaultHardwareFactory) CreateSensor(sensorType string, config SensorConfig) (Sensor, error) {
+    switch sensorType {
+    case "moisture":
+        return NewMoistureSensor(config.Pin), nil
+    case "ph":
+        return NewPHSensor(config.Pin, config.CalibrationData), nil
+    default:
+        return nil, fmt.Errorf("unknown sensor type: %s", sensorType)
+    }
+}
+```
+
+**5. Command Pattern (Hardware Operations):**
+```go
+type Command interface {
+    Execute() error
+    Undo() error
+    GetDescription() string
+}
+
+type WaterModuleCommand struct {
+    moduleID string
+    duration time.Duration
+    pump     PumpController
+}
+
+type CommandQueue struct {
+    commands []Command
+    history  []Command
+}
+
+// Allows for queuing, logging, and undo of hardware operations
+```
+
+**6. Adapter Pattern (Hardware Abstraction):**
+```go
+// Adapts different GPIO libraries to common interface
+type GPIOAdapter interface {
+    SetPin(pin int, state bool) error
+    ReadPin(pin int) (bool, error)
+}
+
+type PeriphGPIOAdapter struct{}    // Uses periph.io
+type RPIOGPIOAdapter struct{}      // Uses rpio library
+type MockGPIOAdapter struct{}      // For testing
+
+// Strategy Pattern for GPIO selection
+type GPIOFactory struct {
+    adapters map[string]GPIOAdapter
+}
+```
+
+**7. State Pattern (Plant Module States):**
+```go
+type PlantModuleState interface {
+    Water(module *PlantModule) error
+    GetStatus() string
+    CanTransitionTo(newState PlantModuleState) bool
+}
+
+type HealthyState struct{}
+type DroughtStressState struct{}
+type OverwateredState struct{}
+type MaintenanceState struct{}
+```
+
+**8. CQRS Pattern (Command Query Responsibility Segregation):**
+```go
+// Commands (Write Side)
+type WaterPlantCommand struct {
+    ModuleID string
+    Duration time.Duration
+    UserID   string
+}
+
+type WaterPlantHandler struct {
+    repo PlantModuleRepository
+    eventBus EventBus
+}
+
+func (h *WaterPlantHandler) Handle(cmd WaterPlantCommand) error {
+    // Execute watering
+    // Publish event
+    return h.eventBus.Publish(PlantWateredEvent{...})
+}
+
+// Queries (Read Side)
+type GetPlantStatusQuery struct {
+    ModuleID string
+}
+
+type PlantStatusView struct {
+    ID           string
+    PlantType    string
+    LastWatered  time.Time
+    MoistureLevel float64
+    Status       string
+}
+```
+
+**9. Dependency Injection Container:**
+```go
+type Container struct {
+    services map[string]interface{}
+}
+
+func (c *Container) Register(name string, factory func(*Container) interface{}) {
+    c.services[name] = factory(c)
+}
+
+func NewContainer() *Container {
+    container := &Container{services: make(map[string]interface{})}
+    
+    // Register dependencies
+    container.Register("gpio", func(c *Container) interface{} {
+        return NewPeriphGPIOAdapter()
+    })
+    
+    container.Register("plantRepo", func(c *Container) interface{} {
+        return NewSQLitePlantRepo(c.Get("db"))
+    })
+    
+    return container
+}
+```
+
+### 8.2 Frontend Architecture Patterns (Next.js/React)
+
+**1. Component Composition Pattern:**
+```tsx
+// Composable dashboard components
+export function PlantWallDashboard() {
+  return (
+    <DashboardLayout>
+      <PlantModuleGrid>
+        {modules.map(module => (
+          <PlantModuleCard key={module.id} module={module}>
+            <SensorReadings sensors={module.sensors} />
+            <IrrigationControls moduleId={module.id} />
+            <PlantStatus status={module.status} />
+          </PlantModuleCard>
+        ))}
+      </PlantModuleGrid>
+      <SystemOverview />
+    </DashboardLayout>
+  )
+}
+```
+
+**2. Custom Hooks Pattern (Data Management):**
+```tsx
+// Custom hooks for state management
+function usePlantModules() {
+  const [modules, setModules] = useState<PlantModule[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    // WebSocket connection for real-time updates
+    const ws = new WebSocket('ws://localhost:5000/ws')
+    ws.onmessage = (event) => {
+      const update = JSON.parse(event.data)
+      setModules(prev => updateModule(prev, update))
+    }
+    
+    return () => ws.close()
+  }, [])
+  
+  return { modules, loading, waterModule, updateSettings }
+}
+
+function useSensorData(moduleId: string) {
+  const [data, setData] = useState<SensorReading[]>([])
+  
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const readings = await api.getSensorData(moduleId)
+      setData(readings)
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, [moduleId])
+  
+  return { data, isStale: Date.now() - data[0]?.timestamp > 30000 }
+}
+```
+
+**3. State Management with Zustand (Lightweight Redux Alternative):**
+```tsx
+// Global state management
+import { create } from 'zustand'
+
+interface PlantWallStore {
+  modules: PlantModule[]
+  systemStatus: SystemStatus
+  alerts: Alert[]
+  
+  // Actions
+  updateModule: (id: string, update: Partial<PlantModule>) => void
+  triggerWatering: (moduleId: string, duration: number) => Promise<void>
+  dismissAlert: (alertId: string) => void
+}
+
+export const usePlantWallStore = create<PlantWallStore>((set, get) => ({
+  modules: [],
+  systemStatus: 'healthy',
+  alerts: [],
+  
+  updateModule: (id, update) => 
+    set(state => ({
+      modules: state.modules.map(m => 
+        m.id === id ? { ...m, ...update } : m
+      )
+    })),
+    
+  triggerWatering: async (moduleId, duration) => {
+    await api.waterModule(moduleId, duration)
+    // State will be updated via WebSocket
+  },
+}))
+```
+
+**4. Server-Side Rendering with Data Fetching:**
+```tsx
+// Next.js App Router with Server Components
+export default async function PlantWallPage() {
+  // Server-side data fetching
+  const initialData = await getPlantModules()
+  
+  return (
+    <PlantWallDashboard initialData={initialData}>
+      <Suspense fallback={<LoadingSkeleton />}>
+        <RealTimeUpdates />
+      </Suspense>
+    </PlantWallDashboard>
+  )
+}
+
+// API Route Handler
+export async function GET(request: Request) {
+  const modules = await plantService.getAllModules()
+  return Response.json(modules)
+}
+
+export async function POST(request: Request) {
+  const command = await request.json()
+  await commandHandler.handle(command)
+  return Response.json({ success: true })
+}
+```
+
+### 8.3 Anbindung an bestehende Go/Next.js Architektur
 
 **Neue Go-Packages erforderlich:**
 
