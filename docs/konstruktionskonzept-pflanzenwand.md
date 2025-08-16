@@ -372,96 +372,75 @@ Hauptverteilung:
                                      └─► GPIO-Expander
 ```
 
-## 6. Materialliste mit Kostenschätzung
+## 6. Materialliste
 
 ### 6.1 Strukturelle Komponenten
 
-| Komponente                 | Menge  | Einzelpreis | Gesamtpreis  |
-| -------------------------- | ------ | ----------- | ------------ |
-| Alu-Profile 40x40mm (6m)   | 8 Stk  | 25,00 €     | 200,00 €     |
-| Alu-Verbinder              | 24 Stk | 3,50 €      | 84,00 €      |
-| Schwerlastdübel M12        | 8 Stk  | 8,00 €      | 64,00 €      |
-| HDPE-Pflanzfächer          | 42 Stk | 12,00 €     | 504,00 €     |
-| Montage-Material           | 1 Set  | 75,00 €     | 75,00 €      |
-| **Struktur Zwischensumme** |        |             | **927,00 €** |
-
-### 6.1a Optionale Bodenstützen (Zusatzausstattung)
-
-| Komponente                    | Menge  | Einzelpreis | Gesamtpreis  |
-| ----------------------------- | ------ | ----------- | ------------ |
-| Alu-Profile 40x40mm (2,3m)    | 2 Stk  | 20,00 €     | 40,00 €      |
-| Höhenverstellbare Füße M12    | 2 Stk  | 15,00 €     | 30,00 €      |
-| Bodenanker M12 (120mm)        | 4 Stk  | 12,00 €     | 48,00 €      |
-| Verstärkungsverbinder         | 4 Stk  | 8,00 €      | 32,00 €      |
-| **Bodenstützen Zwischensumme** |       |             | **150,00 €** |
+| Komponente                    | Menge  | Beschreibung |
+| ----------------------------- | ------ | ------------ |
+| Alu-Profile 40x40mm (6m)      | 8 Stk  | Haupttragstruktur |
+| Alu-Verbinder                 | 24 Stk | Rahmenverbindungen |
+| Schwerlastdübel M12           | 8 Stk  | Wandsicherung |
+| HDPE-Pflanzmodule (50x50x30cm)| 20 Stk | Luftreinigungs-Module |
+| Stahlrahmen Bodenplatte       | 1 Set  | Stabile Basis |
+| Höhenverstellbare Füße        | 4 Stk  | Bodenausgleich |
+| Montage-Material              | 1 Set  | Schrauben, Dichtungen |
 
 ### 6.2 Bewässerungssystem
 
-| Komponente                    | Menge   | Einzelpreis | Gesamtpreis  |
-| ----------------------------- | ------- | ----------- | ------------ |
-| Tauchpumpe 12V, 800L/h        | 2 Stk   | 45,00 €     | 90,00 €      |
-| Magnetventile 12V             | 7 Stk   | 25,00 €     | 175,00 €     |
-| PE-Rohr 20mm (50m)            | 1 Rolle | 65,00 €     | 65,00 €      |
-| Mikro-Schläuche 6mm (100m)    | 1 Rolle | 35,00 €     | 35,00 €      |
-| Reservoir 100L + Deckel       | 1 Stk   | 85,00 €     | 85,00 €      |
-| Dosier-Pumpen (Set)           | 1 Set   | 120,00 €    | 120,00 €     |
-| Fittings/Verbinder            | 1 Set   | 80,00 €     | 80,00 €      |
-| **Bewässerung Zwischensumme** |         |             | **650,00 €** |
+| Komponente                | Menge   | Beschreibung |
+| ------------------------- | ------- | ------------ |
+| Tauchpumpe 12V, 500L/h    | 1 Stk   | Hauptpumpe für Bewässerung |
+| Magnetventile 12V         | 4 Stk   | Zonensteuerung |
+| Tropfschläuche 6mm        | 50m     | Direkte Pflanzenversorgung |
+| Wasserreservoir 50L       | 1 Stk   | Wasserspeicher im Bodenbereich |
+| Druckminderer             | 2 Stk   | Gleichmäßiger Wasserdruck |
+| Schlauchverbinder         | 20 Stk  | Systemverbindungen |
 
 ### 6.3 Elektronik und Sensoren
 
-| Komponente                   | Menge | Einzelpreis | Gesamtpreis  |
-| ---------------------------- | ----- | ----------- | ------------ |
-| Raspberry Pi Zero 2W         | 1 Stk | 18,00 €     | 18,00 €      |
-| SD-Karte 32GB (Industrial)   | 1 Stk | 25,00 €     | 25,00 €      |
-| GPIO-Expander MCP23017       | 2 Stk | 8,00 €      | 16,00 €      |
-| ADC-Wandler ADS1115          | 1 Stk | 12,00 €     | 12,00 €      |
-| Relais-Platine 8-Kanal       | 1 Stk | 28,00 €     | 28,00 €      |
-| pH-Sensoren                  | 3 Stk | 65,00 €     | 195,00 €     |
-| EC-Sensoren                  | 3 Stk | 45,00 €     | 135,00 €     |
-| Feuchtigkeit-Sensoren SHT30  | 3 Stk | 15,00 €     | 45,00 €      |
-| Lichtsensoren BH1750         | 3 Stk | 8,00 €      | 24,00 €      |
-| Gehäuse IP65                 | 1 Stk | 45,00 €     | 45,00 €      |
-| Verkabelung                  | 1 Set | 120,00 €    | 120,00 €     |
-| **Elektronik Zwischensumme** |       |             | **663,00 €** |
+| Komponente                   | Menge | Beschreibung |
+| ---------------------------- | ----- | ------------ |
+| Raspberry Pi Zero 2W         | 1 Stk | Zentrale Steuereinheit |
+| SD-Karte 32GB (Industrial)   | 1 Stk | Betriebssystem und Daten |
+| GPIO-Expander MCP23017       | 2 Stk | Hardware-Interface Erweiterung |
+| ADC-Wandler ADS1115          | 1 Stk | Analog-Digital-Konvertierung |
+| Relais-Platine 8-Kanal       | 1 Stk | Pumpen-/Ventil-Steuerung |
+| Feuchtigkeitssensoren        | 10 Stk| Bodenfeuchte-Überwachung |
+| Temperatur-/Luftfeuchte SHT30| 2 Stk | Raumklima-Sensoren |
+| Lichtsensoren BH1750         | 3 Stk | Beleuchtungs-Überwachung |
+| Gehäuse IP65                 | 1 Stk | Elektronik-Schutz |
+| Verkabelung                  | 1 Set | Systemverkabelung |
 
-### 6.4 Beleuchtung
+### 6.4 LED-Beleuchtung
 
-| Komponente                    | Menge    | Einzelpreis | Gesamtpreis  |
-| ----------------------------- | -------- | ----------- | ------------ |
-| LED-Strips Vollspektrum 20W/m | 6 × 1,2m | 35,00 €     | 210,00 €     |
-| LED-Netzteil 24V, 200W        | 1 Stk    | 55,00 €     | 55,00 €      |
-| PWM-Controller                | 1 Stk    | 25,00 €     | 25,00 €      |
-| Alu-Profile für LEDs          | 6 Stk    | 18,00 €     | 108,00 €     |
-| **Beleuchtung Zwischensumme** |          |             | **398,00 €** |
+| Komponente                    | Menge    | Beschreibung |
+| ----------------------------- | -------- | ------------ |
+| LED-Strips Vollspektrum 15W/m| 4 × 1,4m | Pflanzenwachstum-Beleuchtung |
+| LED-Netzteil 24V, 150W       | 1 Stk    | Stromversorgung LED-System |
+| PWM-Controller                | 1 Stk    | Dimm-/Zeitsteuerung |
+| Alu-Profile für LEDs          | 4 Stk    | LED-Montage und Kühlung |
 
 ### 6.5 Substrat und Pflanzen
 
-| Komponente                          | Menge   | Einzelpreis | Gesamtpreis  |
-| ----------------------------------- | ------- | ----------- | ------------ |
-| Steinwolle-Würfel 10cm³             | 50 Stk  | 1,20 €      | 60,00 €      |
-| Blähton 25L                         | 3 Säcke | 12,00 €     | 36,00 €      |
-| Nährstoff-Konzentrat A+B            | 2 × 5L  | 35,00 €     | 70,00 €      |
-| pH-Regulierer                       | 2 × 1L  | 15,00 €     | 30,00 €      |
-| Starter-Pflanzen                    | 42 Stk  | 4,50 €      | 189,00 €     |
-| **Substrat/Pflanzen Zwischensumme** |         |             | **385,00 €** |
+| Komponente                          | Menge   | Beschreibung |
+| ----------------------------------- | ------- | ------------ |
+| Premium-Zimmerpflanzenerde 40L      | 15 Säcke| Nährstoffreiche Basis |
+| Blähton-Drainage 25L                | 3 Säcke | Drainage-Schicht |
+| Kokos-Perlite-Mix 50L               | 2 Säcke | Substrat-Verbesserung |
+| Flüssigdünger für Zimmerpflanzen    | 4 × 1L  | Langzeit-Nährstoffversorgung |
+| Luftreinigende Starter-Pflanzen     | 20 Stk  | NASA Clean Air Study Pflanzen |
 
-### 6.6 Kostenschätzung (vereinfacht)
+### 6.6 Kostenschätzung
 
-**Gesamtprojektkosten für Raumklima-Pflanzenwand:**
+**Detaillierte Kostenschätzung siehe separates Dokument:**
+📄 [Kostenschätzung Pflanzenwand](kostenschaetzung-pflanzenwand.md)
 
-- **Material und Komponenten:** ca. 2.500 - 3.500 €
-- **Funktionsumfang:** Automatische Bewässerung, IoT-Sensorik, LED-Beleuchtung
-- **Preisrange begründet:** Je nach Ausstattungsgrad und Komponentenqualität
+**Grobe Orientierung:**
+- **Gesamtprojektkosten:** ca. 2.500 - 3.500 €
+- **Laufende Kosten:** ca. 130 €/Jahr (Strom, Substrat, Pflanzen)
 
-**Kostenverteilung grob:**
-- Bodenständer-Konstruktion: ~800 €
-- Bewässerung & Elektronik: ~1.200 €  
-- Pflanzmodule & Substrat: ~600 €
-- LED-Beleuchtung: ~400 €
-- Puffer und Montage: ~500 €
-
-_Preise inkl. MwSt., ohne Arbeitszeit_
+Die genaue Kostenschätzung mit detaillierten Einzelpreisen, Kostenverteilung und verschiedenen Ausstattungsvarianten finden Sie im separaten Kostendokument.
 
 ## 7. Installation und Wartung
 
