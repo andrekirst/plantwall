@@ -4,63 +4,61 @@
 
 - Abmessungen: 2,8m (Breite) × 2,3m (Höhe)
 - Steuerung: Raspberry Pi Zero 2W
-- Automatische Bewässerung und Sensorüberwachung
-- Hydroponisches System für optimale Automation
+- **Zielsetzung: Raumklima-Verbesserung und Luftreinigung**
+- Automatische Bewässerung und Überwachung
+- Freistehende Konstruktion mit Wandsicherung
 
 ---
 
 ## 1. Struktureller Aufbau
 
-### 1.1 Tragkonstruktion und Wandbefestigung
+### 1.1 Freistehende Konstruktion mit Wandsicherung
 
-**Hauptrahmen:**
+**Grundprinzip: Bodenständer-System**
 
 - Material: Aluminium-Profile 40x40mm (Serie 8)
-- Begründung: Korrosionsbeständig, leicht, hohe Tragkraft
-- Wandbefestigung: 8x M12 Schwerlastdübel (min. 120mm Einbaulänge)
-- Wandabstand: 15cm für Kabelführung und Wartungszugang
+- **Haupttraglast:** Komplett auf stabilem Bodenrahmen (wie ein Regal)
+- **Wandkontakt:** Nur zur Kipp-Sicherung - minimale Wandbelastung
+- Wandabstand: 5-10cm (nur für Sicherungsbefestigung)
 
-**🔧 Zusatzoption: Bodenstützen für reduzierte Wandbelastung**
+**Konstruktionskonzept:**
 
-- **Einsatzgebiet:** Bei unsicherer Wandtraglast oder Altbau-Wänden
-- **Bodenstützen:** 2x Aluminium-Profile 40x40mm vertikal, höhenverstellbar
-- **Vorteile:** Wandbelastung reduziert um 60-70% (von 387kg auf ~120kg)
-- **Bodenanker:** 4x M12 Schwerlastanker in Estrich/Beton
+- **Schwere Bodenplatte:** Stahlrahmen 60x40mm als stabile Basis
+- **Vertikale Träger:** 4x Aluminium-Profile, fest mit Bodenrahmen verbunden
+- **Wandsicherung:** 2-4 leichte Sicherungspunkte gegen Umkippen
+- **Höhenverstellung:** Verstellbare Füße für unebene Böden
 
 **Konstruktionsschema:**
 
 ```
-Draufsicht Tragkonstruktion:
+Draufsicht Bodenständer-System:
 ┌─────────────────────────────────────────────────┐ 2,8m
-│ ┌─┐     ┌─┐     ┌─┐     ┌─┐     ┌─┐     ┌─┐ │
-│ │█│     │█│     │█│     │█│     │█│     │█│ │ Wandbefestigungspunkte
-│ └─┘     └─┘     └─┘     └─┘     └─┘     └─┘ │
-│                                             │
-│ ┌─┐     ┌─┐     ┌─┐     ┌─┐     ┌─┐     ┌─┐ │
-│ │█│     │█│     │█│     │█│     │█│     │█│ │
-│ └─┘     └─┘     └─┘     └─┘     └─┘     └─┘ │
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ ← Schwere Bodenplatte (Stahlrahmen)
+│ │                                           │ │
+│ │  ● Pflanzmodule (luftreinigende Pflanzen) │ │ 
+│ │                                           │ │
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
 └─────────────────────────────────────────────────┘
- ▼                                           ▼
-[⚫]  Optionale Bodenstützen                [⚫]  
+                         │    │ ← Nur 2 leichte Wandsicherungen
+                        Wand
 ```
 
-**Seitenansicht mit Bodenstützen:**
+**Seitenansicht Bodenständer:**
 
 ```
 Wand    ┌─────────────────────────┐ ← Pflanzenwand (2,3m hoch)
- █████  │  ░░░░░░░░░░░░░░░░░░░░░░  │
- █████  │  ░░ Pflanzen ░░░░░░░░░░  │   
- █████  │  ░░░░░░░░░░░░░░░░░░░░░░  │   ┌─ Wandhalterung (reduzierte Last)
- █████  │  ░░░░░░░░░░░░░░░░░░░░░░  │ ──┤
- █████  │  ░░░░░░░░░░░░░░░░░░░░░░  │   └─ Stabilisierung
- █████  └─────────────────────────┘
-        │                         │
-        │  Bodenstütze            │  Bodenstütze
-        ▼  (höhenverstellbar)     ▼  (höhenverstellbar)
-      ┌─┴─┐                     ┌─┴─┐
-      │⚫⚫│ ← Bodenanker        │⚫⚫│ ← Bodenanker
-      └───┘                     └───┘
-    Boden/Estrich             Boden/Estrich
+ █████ ╱│  🌿   🌿   🌿   🌿   🌿  │ ← Luftreinigende Pflanzen  
+ █████╱ │  🌿   🌿   🌿   🌿   🌿  │   ┌─ Leichte Wandsicherung
+ ████│  │  🌿   🌿   🌿   🌿   🌿  │ ──┤   (nur gegen Umkippen)
+ ████│  │  🌿   🌿   🌿   🌿   🌿  │   └─ Minimale Wandlast
+ ████│  │                         │
+ ████│  └─────────────────────────┘
+ ████│  ▌█████████████████████████▐ ← Schwere Bodenplatte (Haupttragkraft)
+      │  ▌ Wasserreservoir + Pumpe ▐
+      │  ▌       Elektronik       ▐
+      └──▌███████████████████████▌─┘
+         ▲                       ▲
+    Höhenverstellbarer Fuß  Höhenverstellbarer Fuß
 ```
 
 ### 1.2 Materialauswahl mit Begründung
@@ -76,33 +74,30 @@ Wand    ┌───────────────────────
 - HDPE-Kunststoff: Lebensmittelecht, UV-stabil
 - Wandstärke: 3mm für Stabilität bei Vollfüllung
 
-### 1.3 Gewichtsverteilung und Traglast-Berechnungen
+### 1.3 Lastverteilung Bodenständer-System
 
-**Gewichtsanalyse pro m²:**
+**Gewichtsanalyse:**
 
-- Tragkonstruktion: 15 kg/m²
-- Pflanzfächer (gefüllt): 25 kg/m²
-- Wasser (gesättigt): 8 kg/m²
-- Pflanzen und Substrat: 12 kg/m²
-- **Gesamtgewicht: 60 kg/m² = 387 kg total**
+- Bodenplatte (Stahl): ~60 kg
+- Tragkonstruktion: ~40 kg
+- Pflanzmodule mit Substrat: ~80 kg
+- Wasserreservoir (gefüllt): ~50 kg
+- **Gesamtgewicht: ~230 kg**
 
-**Sicherheitsfaktor:** 2,5
-**Erforderliche Wandtraglast:** 968 kg
-
-**🏗️ Mit optionalen Bodenstützen:**
-- Wandbelastung reduziert auf: ~120 kg (70% weniger)
-- Bodenbelastung: ~270 kg (verteilt auf 4 Ankerpunkte = 67,5 kg/Punkt)
-- Geeignet für: Altbau, Gipskarton-Wände, unsichere Wandtragfähigkeit
+**Lastverteilung:**
+- **Bodenbelastung:** 230 kg (verteilt auf 4 Füße = 57,5 kg/Fuß)
+- **Wandbelastung:** Nur Kipp-Sicherung (~10-20 kg seitlich)
+- **Vorteil:** Geeignet für alle Wandtypen, auch Gipskarton oder Altbau
 
 ## 2. Modulares Pflanzensystem
 
-### 2.1 Anzahl und Dimensionen der Pflanzfächer
+### 2.1 Anzahl und Dimensionen der Pflanzmodule
 
-**Fach-Layout (Grid-System):**
+**Luftreinigungs-optimiertes Layout:**
 
-- 7 Fächer horizontal × 6 Fächer vertikal = **42 Pflanzfächer**
-- Einzelfach: 35cm (B) × 35cm (H) × 15cm (T)
-- Nutzvolumen: 1,84 Liter pro Fach
+- 5 Module horizontal × 4 Module vertikal = **20 Pflanzmodule**
+- Einzelmodul: 50cm (B) × 50cm (H) × 30cm (T)  
+- Nutzvolumen: 7,5 Liter pro Modul (größere Pflanzen für bessere Luftreinigung)
 
 ```
 Seitenansicht Pflanzfächer:
@@ -121,21 +116,21 @@ Seitenansicht Pflanzfächer:
 └────┴────┴────┴────┴────┴────┴────┘
 ```
 
-### 2.2 Substratsystem (Hydroponik)
+### 2.2 Substrat für Luftreinigungs-Pflanzen
 
-**Gewähltes System: NFT (Nutrient Film Technique)**
+**Gewähltes System: Hochwertige Zimmerpflanzen-Erde mit Drainage**
 
-- Substrat: Steinwolle-Würfel (10×10×10cm)
-- Zusätzlich: Expandierter Blähton als Stützmaterial
-- Wurzelraum: Optimiert für schnelles Wachstum und einfache Überwachung
+- Substrat: Premium-Zimmerpflanzenerde mit Perlite und Kokosfasern
+- Drainage: Blähton-Schicht am Boden jedes Moduls
+- Wurzelraum: Optimiert für gesunde Zimmerpflanzen und Langzeit-Stabilität
 
-**Vorteile für Automation:**
+**Vorteile für Raumklima:**
 
-- Präzise Nährstoffkontrolle
-- Reduzierter Wasserbedarf (60% weniger als Erde)
-- Keine Schädlinge aus Boden
-- Gleichmäßige Bewässerung
-- Einfache pH- und EC-Messung
+- Natürliche Luftfeuchtigkeit-Regulierung durch Erdsubstrat
+- Bessere Nährstoffspeicherung für robuste Pflanzengesundheit
+- Pflegeleicht und wartungsfreundlich
+- Geeignet für alle luftreinigenden Zimmerpflanzen
+- Längere Standzeiten ohne Pflanzenwechsel
 
 ### 2.3 Drainage-System
 
@@ -145,6 +140,29 @@ Seitenansicht Pflanzfächer:
 2. Hauptdrainagerohr: DN32 PVC mit 2% Gefälle
 3. Sammelrinne: Edelstahl V2A, 50mm breit
 4. Rücklauf zum Reservoir: Schwerkraft-gesteuert
+
+### 2.4 Pflanzenauswahl für optimale Luftreinigung
+
+**NASA Clean Air Study - Top Luftreiniger:**
+
+**Hauptpflanzen (10 Module):**
+- **Bogenhanf (Sansevieria):** Entfernt Formaldehyd, Benzol, produziert nachts O₂
+- **Efeutute (Epipremnum):** Filtert Formaldehyd, Xylol, schnelles Wachstum
+- **Friedenslilie (Spathiphyllum):** Ammoniak, Benzol, Trichloretylen-Filter
+- **Gummibaum (Ficus elastica):** Formaldehyd-Spezialist, große Blattoberfläche
+
+**Ergänzungspflanzen (10 Module):**
+- **Grünlilie (Chlorophytum):** Formaldehyd, Xylol, sehr pflegeleicht
+- **Drachenbaum (Dracaena):** Trichloretylen, Formaldehyd, optisch ansprechend
+- **Aloe Vera:** Benzol, Formaldehyd, zusätzlicher Nutzen als Heilpflanze
+- **Bambus-Palme (Chamaedorea):** Formaldehyd, Xylol, erhöht Luftfeuchtigkeit
+
+**Auswahlkriterien:**
+- Nachgewiesene Luftreinigungsleistung (NASA-Studie)
+- Robustheit und pflegeleichte Eigenschaften
+- Verschiedene Blattformen für maximale Oberfläche
+- Kompatibilität mit automatischer Bewässerung
+- Ästhetische Vielfalt (verschiedene Höhen und Texturen)
 
 ## 3. Bewässerungsinfrastruktur
 
@@ -428,32 +446,22 @@ Hauptverteilung:
 | Starter-Pflanzen                    | 42 Stk  | 4,50 €      | 189,00 €     |
 | **Substrat/Pflanzen Zwischensumme** |         |             | **385,00 €** |
 
-### 6.6 Gesamtkostenschätzung
+### 6.6 Kostenschätzung (vereinfacht)
 
-**Grundausstattung (reine Wandmontage):**
+**Gesamtprojektkosten für Raumklima-Pflanzenwand:**
 
-| Kategorie                           | Kosten         |
-| ----------------------------------- | -------------- |
-| Strukturelle Komponenten            | 927,00 €       |
-| Bewässerungssystem                  | 650,00 €       |
-| Elektronik und Sensoren             | 663,00 €       |
-| Beleuchtung                         | 398,00 €       |
-| Substrat und Pflanzen               | 385,00 €       |
-| **Materialkosten gesamt**           | **3.023,00 €** |
-| Werkzeug/Verbrauchsmaterial (+5%)   | 151,15 €       |
-| Puffer für Unvorhergesehenes (+10%) | 317,42 €       |
-| **Gesamtprojektkosten Grundversion** | **3.491,57 €** |
+- **Material und Komponenten:** ca. 2.500 - 3.500 €
+- **Funktionsumfang:** Automatische Bewässerung, IoT-Sensorik, LED-Beleuchtung
+- **Preisrange begründet:** Je nach Ausstattungsgrad und Komponentenqualität
 
-**Mit optionalen Bodenstützen:**
+**Kostenverteilung grob:**
+- Bodenständer-Konstruktion: ~800 €
+- Bewässerung & Elektronik: ~1.200 €  
+- Pflanzmodule & Substrat: ~600 €
+- LED-Beleuchtung: ~400 €
+- Puffer und Montage: ~500 €
 
-| Zusätzliche Komponente              | Kosten         |
-| ----------------------------------- | -------------- |
-| Bodenstützen-Set (komplett)         | 150,00 €       |
-| **Gesamtprojektkosten mit Bodenstützen** | **3.641,57 €** |
-
-_Alle Preise inkl. MwSt., Stand 2024. Arbeitszeit nicht eingerechnet._
-
-**💡 Empfehlung:** Bei unsicherer Wandtragfähigkeit die Bodenstützen-Option wählen (+150€ für deutlich mehr Sicherheit und Flexibilität bei der Wandauswahl).
+_Preise inkl. MwSt., ohne Arbeitszeit_
 
 ## 7. Installation und Wartung
 
