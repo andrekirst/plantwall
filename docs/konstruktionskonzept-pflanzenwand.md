@@ -805,26 +805,725 @@ Die genaue Kostenschätzung mit detaillierten Einzelpreisen, Kostenverteilung un
 - **Server-Side Rendering:** App Router mit Server Components
 - **WebSocket Integration:** Real-Time Updates für Sensor-Daten
 
-### 8.3 Integration in bestehende Architektur
+### 8.3 Autonome Software-Architektur für 100% Standalone-Betrieb
 
-**Erforderliche Erweiterungen:**
+#### 8.3.1 Local-First Design Pattern
+
+**Kernprinzip: Vollständige Autonomie ohne externe Dependencies**
+
+Die Pflanzenwand muss auch bei Ausfall externer Services (Internet, Home Assistant, Cloud) vollständig funktionsfähig bleiben. Das System implementiert eine "Local-First" Architektur mit optionaler Cloud-Integration.
+
+**Architektur-Patterns für Autonomie:**
+
+```go
+// autonomous_core.go - Autonomer Betriebskern
+type AutonomousCore struct {
+    localMQTTBroker     *LocalMQTTBroker
+    offlineStateManager *OfflineStateManager
+    circuitBreakers     map[string]*CircuitBreaker
+    localDecisionEngine *LocalDecisionEngine
+    emergencyProtocols  *EmergencyProtocols
+    selfDiagnostics     *SelfDiagnostics
+}
+
+type OperatingMode int
+
+const (
+    AutonomousMode OperatingMode = iota  // Vollständig autonom
+    ConnectedMode                        // Mit externen Services
+    DegradedMode                         // Reduzierte Funktionalität
+    EmergencyMode                        // Nur kritische Funktionen
+)
+
+func (ac *AutonomousCore) DetermineOperatingMode() OperatingMode {
+    // 1. Prüfe externe Verbindungen
+    internetAvailable := ac.checkInternetConnectivity()
+    homeAssistantAvailable := ac.checkHomeAssistantConnectivity()
+    cloudServicesAvailable := ac.checkCloudServices()
+    
+    // 2. Prüfe lokale Systemgesundheit
+    localSystemHealth := ac.selfDiagnostics.GetSystemHealth()
+    
+    // 3. Entscheide Betriebsmodus
+    if localSystemHealth.IsCritical() {
+        return EmergencyMode
+    }
+    
+    if !internetAvailable && !homeAssistantAvailable {
+        log.Printf("External services unavailable, switching to autonomous mode")
+        return AutonomousMode
+    }
+    
+    if internetAvailable && homeAssistantAvailable && cloudServicesAvailable {
+        return ConnectedMode
+    }
+    
+    return DegradedMode
+}
+
+func (ac *AutonomousCore) AdaptToOperatingMode(mode OperatingMode) error {
+    log.Printf("Adapting to operating mode: %v", mode)
+    
+    switch mode {
+    case AutonomousMode:
+        return ac.enableFullAutonomy()
+    case ConnectedMode:
+        return ac.enableConnectedFeatures()
+    case DegradedMode:
+        return ac.enableDegradedMode()
+    case EmergencyMode:
+        return ac.enableEmergencyMode()
+    default:
+        return fmt.Errorf("unknown operating mode: %v", mode)
+    }
+}
+```
+
+#### 8.3.2 Circuit Breaker Pattern für externe Service-Ausfälle
+
+**Problem:** Externe Services können ausfallen und das lokale System blockieren
+**Lösung:** Circuit Breaker überwacht externe Calls und schaltet bei Ausfällen auf lokale Alternativen um
+
+```go
+// circuit_breaker.go - Robuste Service-Integration
+type CircuitBreaker struct {
+    serviceName     string
+    failureThreshold int
+    recoveryTimeout  time.Duration
+    state           CircuitState
+    failureCount    int
+    lastFailureTime time.Time
+    fallbackHandler FallbackHandler
+}
+
+type CircuitState int
+
+const (
+    Closed CircuitState = iota  // Normal operation
+    Open                        // Service failed, using fallback
+    HalfOpen                    // Testing if service recovered
+)
+
+type FallbackHandler interface {
+    HandleFallback(request interface{}) (interface{}, error)
+}
+
+func (cb *CircuitBreaker) Call(fn func() (interface{}, error)) (interface{}, error) {
+    if cb.state == Open {
+        if time.Since(cb.lastFailureTime) > cb.recoveryTimeout {
+            cb.state = HalfOpen
+            log.Printf("Circuit breaker %s: attempting recovery", cb.serviceName)
+        } else {
+            log.Printf("Circuit breaker %s: using fallback", cb.serviceName)
+            return cb.fallbackHandler.HandleFallback(nil)
+        }
+    }
+    
+    result, err := fn()
+    
+    if err != nil {
+        cb.onFailure()
+        return cb.fallbackHandler.HandleFallback(nil)
+    }
+    
+    cb.onSuccess()
+    return result, nil
+}
+
+func (cb *CircuitBreaker) onFailure() {
+    cb.failureCount++
+    cb.lastFailureTime = time.Now()
+    
+    if cb.failureCount >= cb.failureThreshold {
+        cb.state = Open
+        log.Printf("Circuit breaker %s: opened due to failures", cb.serviceName)
+    }
+}
+
+// Home Assistant Circuit Breaker Implementation
+type HomeAssistantFallback struct {
+    localMQTT *LocalMQTTBroker
+    localDB   *LocalDatabase
+}
+
+func (haf *HomeAssistantFallback) HandleFallback(request interface{}) (interface{}, error) {
+    log.Printf("Home Assistant unavailable, using local MQTT broker")
+    
+    // Fallback: Lokaler MQTT Broker für Device Discovery
+    return haf.localMQTT.PublishLocalDiscovery(request)
+}
+
+// Cloud Services Circuit Breaker
+type CloudServicesFallback struct {
+    localStorage *LocalStorage
+    backupQueue  *BackupQueue
+}
+
+func (csf *CloudServicesFallback) HandleFallback(request interface{}) (interface{}, error) {
+    log.Printf("Cloud services unavailable, queuing for later sync")
+    
+    // Queue data for later synchronization
+    return csf.backupQueue.QueueForLaterSync(request)
+}
+```
+
+#### 8.3.3 Local MQTT Broker auf Raspberry Pi
+
+**Autonomie-Anforderung:** Eigener MQTT Broker für Device Discovery und Kommunikation
+
+```go
+// local_mqtt.go - Lokaler MQTT Broker für Autonomie
+type LocalMQTTBroker struct {
+    broker          *mqtt.Broker
+    port            int
+    deviceRegistry  map[string]MQTTDevice
+    subscriptions   map[string][]MQTTSubscription
+    retainedMessages map[string][]byte
+}
+
+type MQTTDevice struct {
+    DeviceID        string                 `json:"device_id"`
+    Name            string                 `json:"name"`
+    DeviceClass     string                 `json:"device_class"`
+    StateTopic      string                 `json:"state_topic"`
+    CommandTopic    string                 `json:"command_topic"`
+    ConfigTopic     string                 `json:"config_topic"`
+    Availability    MQTTAvailability       `json:"availability"`
+    Device          MQTTDeviceInfo         `json:"device"`
+    LastSeen        time.Time              `json:"last_seen"`
+}
+
+func (lmb *LocalMQTTBroker) StartBroker() error {
+    config := mqtt.Config{
+        Port:            lmb.port,
+        AllowAnonymous:  false, // Sicherheit auch lokal
+        Username:        "plantwall",
+        Password:        generateSecurePassword(),
+        RetainedStore:   true,
+        PersistenceFile: "/opt/plantwall/data/mqtt_retained.db",
+    }
+    
+    broker, err := mqtt.NewBroker(config)
+    if err != nil {
+        return fmt.Errorf("failed to create MQTT broker: %w", err)
+    }
+    
+    lmb.broker = broker
+    
+    // Setup default topics für Plant Wall Discovery
+    err = lmb.setupPlantWallTopics()
+    if err != nil {
+        return fmt.Errorf("failed to setup plant wall topics: %w", err)
+    }
+    
+    log.Printf("Local MQTT broker started on port %d", lmb.port)
+    return broker.Start()
+}
+
+func (lmb *LocalMQTTBroker) PublishPlantWallDiscovery() error {
+    // Home Assistant Discovery für alle 20 Pflanzmodule
+    for moduleID := 1; moduleID <= 20; moduleID++ {
+        devices := []MQTTDevice{
+            {
+                DeviceID:    fmt.Sprintf("plantwall_soil_moisture_%d", moduleID),
+                Name:        fmt.Sprintf("Plant Wall Module %d Soil Moisture", moduleID),
+                DeviceClass: "humidity",
+                StateTopic:  fmt.Sprintf("plantwall/module/%d/soil_moisture/state", moduleID),
+                Device: MQTTDeviceInfo{
+                    Identifiers:  []string{fmt.Sprintf("plantwall_module_%d", moduleID)},
+                    Name:        fmt.Sprintf("Plant Wall Module %d", moduleID),
+                    Model:       "Autonomous Plant Wall v2.0",
+                    Manufacturer: "PlantWall Systems",
+                },
+            },
+            {
+                DeviceID:    fmt.Sprintf("plantwall_watering_%d", moduleID),
+                Name:        fmt.Sprintf("Plant Wall Module %d Watering", moduleID),
+                DeviceClass: "switch",
+                StateTopic:  fmt.Sprintf("plantwall/module/%d/watering/state", moduleID),
+                CommandTopic: fmt.Sprintf("plantwall/module/%d/watering/set", moduleID),
+            },
+        }
+        
+        for _, device := range devices {
+            configTopic := fmt.Sprintf("homeassistant/sensor/%s/config", device.DeviceID)
+            configPayload, _ := json.Marshal(device)
+            
+            err := lmb.broker.Publish(configTopic, configPayload, true) // Retained
+            if err != nil {
+                log.Printf("Failed to publish discovery for %s: %v", device.DeviceID, err)
+            }
+        }
+    }
+    
+    return nil
+}
+
+func (lmb *LocalMQTTBroker) PublishSensorData(moduleID int, sensorType string, value float64) error {
+    topic := fmt.Sprintf("plantwall/module/%d/%s/state", moduleID, sensorType)
+    
+    payload := map[string]interface{}{
+        "value":     value,
+        "timestamp": time.Now().Unix(),
+        "unit":      getSensorUnit(sensorType),
+        "module_id": moduleID,
+    }
+    
+    payloadBytes, _ := json.Marshal(payload)
+    return lmb.broker.Publish(topic, payloadBytes, false)
+}
+```
+
+#### 8.3.4 Local State Machine für autonome Entscheidungen
+
+**Definierte Zustände für komplett autonome Operation:**
+
+```go
+// state_machine.go - Autonome Entscheidungslogik
+type PlantWallStateMachine struct {
+    currentState    SystemState
+    stateHistory    []StateTransition
+    decisionEngine  *LocalDecisionEngine
+    emergencyRules  *EmergencyRuleEngine
+    localDB         *LocalDatabase
+}
+
+type SystemState int
+
+const (
+    HealthyAutonomous SystemState = iota  // Alles normal, autonom
+    MonitoringMode                        // Überwachung verstärkt
+    InterventionRequired                  // Eingriff erforderlich
+    EmergencyResponse                     // Notfallmodus
+    MaintenanceMode                       // Wartungsmodus
+    RecoveryMode                          // Wiederherstellung
+)
+
+type StateTransition struct {
+    FromState    SystemState   `json:"from_state"`
+    ToState      SystemState   `json:"to_state"`
+    Trigger      string        `json:"trigger"`
+    Timestamp    time.Time     `json:"timestamp"`
+    SensorData   SensorSnapshot `json:"sensor_data"`
+    ActionTaken  string        `json:"action_taken"`
+}
+
+func (psm *PlantWallStateMachine) ProcessSensorData(readings SensorReadings) error {
+    // 1. Analysiere aktuelle Sensor-Daten
+    analysis := psm.decisionEngine.AnalyzeReadings(readings)
+    
+    // 2. Bestimme erforderliche State-Transition
+    newState := psm.determineNewState(analysis)
+    
+    // 3. Führe State-Transition durch
+    if newState != psm.currentState {
+        err := psm.transitionToState(newState, analysis)
+        if err != nil {
+            return fmt.Errorf("state transition failed: %w", err)
+        }
+    }
+    
+    // 4. Führe State-spezifische Aktionen aus
+    return psm.executeStateActions(analysis)
+}
+
+func (psm *PlantWallStateMachine) determineNewState(analysis SensorAnalysis) SystemState {
+    // Emergency conditions - höchste Priorität
+    if analysis.HasCriticalFailures() {
+        return EmergencyResponse
+    }
+    
+    if analysis.HasMultiplePlantStress() {
+        return InterventionRequired
+    }
+    
+    // Monitoring conditions
+    if analysis.HasWarnings() {
+        return MonitoringMode
+    }
+    
+    // Maintenance conditions
+    if analysis.RequiresMaintenance() {
+        return MaintenanceMode
+    }
+    
+    // Default: Healthy autonomous operation
+    return HealthyAutonomous
+}
+
+func (psm *PlantWallStateMachine) executeStateActions(analysis SensorAnalysis) error {
+    switch psm.currentState {
+    case HealthyAutonomous:
+        return psm.executeNormalOperation(analysis)
+    
+    case MonitoringMode:
+        return psm.executeEnhancedMonitoring(analysis)
+    
+    case InterventionRequired:
+        return psm.executeInterventions(analysis)
+    
+    case EmergencyResponse:
+        return psm.executeEmergencyResponse(analysis)
+    
+    case MaintenanceMode:
+        return psm.executeMaintenanceActions(analysis)
+    
+    case RecoveryMode:
+        return psm.executeRecoveryActions(analysis)
+    
+    default:
+        return fmt.Errorf("unknown system state: %v", psm.currentState)
+    }
+}
+
+func (psm *PlantWallStateMachine) executeNormalOperation(analysis SensorAnalysis) error {
+    // Normale autonome Bewässerung basierend auf Pflanzenprofilen
+    for moduleID, condition := range analysis.PlantConditions {
+        if condition.RequiresWatering {
+            duration := psm.calculateWateringDuration(moduleID, condition)
+            
+            err := psm.scheduleWatering(moduleID, duration)
+            if err != nil {
+                log.Printf("Failed to schedule watering for module %d: %v", moduleID, err)
+            }
+        }
+    }
+    
+    // LED-Beleuchtung anpassen
+    return psm.adjustLighting(analysis.LightRequirements)
+}
+
+func (psm *PlantWallStateMachine) executeEmergencyResponse(analysis SensorAnalysis) error {
+    log.Printf("EMERGENCY RESPONSE: Critical system condition detected")
+    
+    // 1. Stoppe alle nicht-kritischen Operationen
+    err := psm.stopNonCriticalOperations()
+    if err != nil {
+        log.Printf("Warning: Failed to stop non-critical operations: %v", err)
+    }
+    
+    // 2. Sichere kritische Systeme
+    if analysis.WaterLeakDetected {
+        err = psm.shutdownWateringSystem()
+        if err != nil {
+            log.Printf("CRITICAL: Failed to shutdown watering system: %v", err)
+        }
+    }
+    
+    // 3. Aktiviere Notfall-Bewässerung für kritische Pflanzen
+    for moduleID, condition := range analysis.PlantConditions {
+        if condition.CriticallyDry {
+            // Minimale Notfall-Bewässerung
+            err = psm.emergencyWatering(moduleID, 10*time.Second)
+            if err != nil {
+                log.Printf("Emergency watering failed for module %d: %v", moduleID, err)
+            }
+        }
+    }
+    
+    // 4. Sende lokale Benachrichtigungen
+    return psm.sendEmergencyAlert(analysis.EmergencyReasons)
+}
+```
+
+#### 8.3.5 Graceful Degradation Pattern
+
+**Funktionalität reduzieren statt komplett ausfallen:**
+
+```go
+// graceful_degradation.go - Intelligente Funktionsreduktion
+type GracefulDegradation struct {
+    coreFeatures      []Feature
+    optionalFeatures  []Feature
+    degradationLevels map[DegradationLevel]FeatureSet
+    currentLevel      DegradationLevel
+}
+
+type DegradationLevel int
+
+const (
+    FullFunctionality DegradationLevel = iota
+    ReducedFunctionality
+    CoreFunctionality
+    SurvivalMode
+)
+
+type Feature struct {
+    Name        string
+    Priority    int
+    IsCore      bool
+    PowerUsage  float64 // Watts
+    Dependency  []string
+}
+
+func (gd *GracefulDegradation) AdaptToDegradedConditions(conditions SystemConditions) error {
+    newLevel := gd.calculateDegradationLevel(conditions)
+    
+    if newLevel != gd.currentLevel {
+        log.Printf("Degradation level change: %v -> %v", gd.currentLevel, newLevel)
+        
+        err := gd.transitionToDegradationLevel(newLevel)
+        if err != nil {
+            return fmt.Errorf("degradation transition failed: %w", err)
+        }
+        
+        gd.currentLevel = newLevel
+    }
+    
+    return nil
+}
+
+func (gd *GracefulDegradation) calculateDegradationLevel(conditions SystemConditions) DegradationLevel {
+    // Faktoren für Degradation
+    score := 0
+    
+    // Power-related degradation
+    if conditions.BatteryLevel < 20 {
+        score += 30
+    } else if conditions.BatteryLevel < 50 {
+        score += 15
+    }
+    
+    // Connectivity degradation
+    if !conditions.InternetAvailable {
+        score += 10
+    }
+    if !conditions.HomeAssistantAvailable {
+        score += 5
+    }
+    
+    // Hardware degradation
+    if conditions.FailedSensors > 2 {
+        score += 25
+    } else if conditions.FailedSensors > 0 {
+        score += 10
+    }
+    
+    // Temperature-related stress
+    if conditions.AmbientTemperature > 35 || conditions.AmbientTemperature < 10 {
+        score += 15
+    }
+    
+    // Water shortage
+    if conditions.WaterLevel < 20 {
+        score += 20
+    }
+    
+    // Determine level based on score
+    if score >= 60 {
+        return SurvivalMode
+    } else if score >= 40 {
+        return CoreFunctionality
+    } else if score >= 20 {
+        return ReducedFunctionality
+    }
+    
+    return FullFunctionality
+}
+
+func (gd *GracefulDegradation) transitionToDegradationLevel(level DegradationLevel) error {
+    activeFeatures := gd.degradationLevels[level]
+    
+    log.Printf("Transitioning to degradation level %v with %d features", level, len(activeFeatures))
+    
+    // Disable features not in the target level
+    for _, feature := range gd.optionalFeatures {
+        if !activeFeatures.Contains(feature.Name) {
+            err := gd.disableFeature(feature)
+            if err != nil {
+                log.Printf("Warning: Failed to disable feature %s: %v", feature.Name, err)
+            }
+        }
+    }
+    
+    // Enable features for the target level
+    for featureName := range activeFeatures {
+        if !gd.isFeatureActive(featureName) {
+            err := gd.enableFeature(featureName)
+            if err != nil {
+                log.Printf("Warning: Failed to enable feature %s: %v", featureName, err)
+            }
+        }
+    }
+    
+    return nil
+}
+
+// Feature-specific implementations
+func (gd *GracefulDegradation) configureDegradationLevels() {
+    gd.degradationLevels = map[DegradationLevel]FeatureSet{
+        FullFunctionality: {
+            "plant_monitoring": true,
+            "automatic_watering": true,
+            "led_lighting": true,
+            "web_dashboard": true,
+            "mqtt_publishing": true,
+            "data_logging": true,
+            "cloud_sync": true,
+            "home_assistant_integration": true,
+            "advanced_analytics": true,
+            "predictive_algorithms": true,
+        },
+        ReducedFunctionality: {
+            "plant_monitoring": true,
+            "automatic_watering": true,
+            "led_lighting": true,
+            "web_dashboard": true,
+            "mqtt_publishing": true,
+            "data_logging": true,
+            // Disabled: cloud_sync, advanced_analytics, predictive_algorithms
+        },
+        CoreFunctionality: {
+            "plant_monitoring": true,
+            "automatic_watering": true,
+            "led_lighting": false, // Reduziert auf Energiesparen
+            "web_dashboard": true,
+            "data_logging": true,
+            // Disabled: mqtt, cloud features, advanced features
+        },
+        SurvivalMode: {
+            "plant_monitoring": true,
+            "automatic_watering": true, // Nur kritische Bewässerung
+            // Everything else disabled
+        },
+    }
+}
+```
+
+#### 8.3.6 Local Queue System für Offline-Fähigkeit
+
+```go
+// offline_queue.go - Persistente Warteschlange für Offline-Daten
+type OfflineQueue struct {
+    queueDB        *LocalDatabase
+    retryScheduler *RetryScheduler
+    maxQueueSize   int
+    compression    bool
+}
+
+type QueuedMessage struct {
+    ID          string                 `json:"id"`
+    Type        MessageType            `json:"type"`
+    Payload     interface{}            `json:"payload"`
+    Timestamp   time.Time              `json:"timestamp"`
+    Retries     int                    `json:"retries"`
+    NextRetry   time.Time              `json:"next_retry"`
+    Destination string                 `json:"destination"`
+    Priority    int                    `json:"priority"`
+}
+
+func (oq *OfflineQueue) QueueMessage(msg QueuedMessage) error {
+    // Check queue size limits
+    if oq.getCurrentQueueSize() >= oq.maxQueueSize {
+        // Remove oldest low-priority messages
+        err := oq.pruneOldMessages()
+        if err != nil {
+            return fmt.Errorf("failed to prune queue: %w", err)
+        }
+    }
+    
+    // Compress payload if enabled
+    if oq.compression {
+        compressed, err := oq.compressPayload(msg.Payload)
+        if err != nil {
+            log.Printf("Compression failed, storing uncompressed: %v", err)
+        } else {
+            msg.Payload = compressed
+        }
+    }
+    
+    // Store in local database
+    return oq.queueDB.InsertQueuedMessage(msg)
+}
+
+func (oq *OfflineQueue) ProcessQueue() error {
+    messages, err := oq.queueDB.GetPendingMessages(100) // Batch processing
+    if err != nil {
+        return fmt.Errorf("failed to get pending messages: %w", err)
+    }
+    
+    for _, msg := range messages {
+        success := oq.attemptDelivery(msg)
+        
+        if success {
+            err = oq.queueDB.MarkMessageDelivered(msg.ID)
+            if err != nil {
+                log.Printf("Failed to mark message as delivered: %v", err)
+            }
+        } else {
+            // Schedule retry with exponential backoff
+            msg.Retries++
+            msg.NextRetry = time.Now().Add(time.Duration(msg.Retries*msg.Retries) * time.Minute)
+            
+            if msg.Retries > 10 {
+                // Mark as failed permanently
+                err = oq.queueDB.MarkMessageFailed(msg.ID)
+            } else {
+                err = oq.queueDB.UpdateMessage(msg)
+            }
+            
+            if err != nil {
+                log.Printf("Failed to update message retry info: %v", err)
+            }
+        }
+    }
+    
+    return nil
+}
+
+// Home Assistant Integration mit Offline-Queue
+func (oq *OfflineQueue) QueueHomeAssistantUpdate(deviceID string, state interface{}) error {
+    msg := QueuedMessage{
+        ID:          generateMessageID(),
+        Type:        MessageTypeHomeAssistant,
+        Payload: map[string]interface{}{
+            "device_id": deviceID,
+            "state":     state,
+            "timestamp": time.Now(),
+        },
+        Timestamp:   time.Now(),
+        Retries:     0,
+        NextRetry:   time.Now(),
+        Destination: "home_assistant",
+        Priority:    5, // Medium priority
+    }
+    
+    return oq.QueueMessage(msg)
+}
+```
+
+#### 8.3.7 Integration in bestehende Architektur
+
+**Erforderliche Erweiterungen für Autonomie:**
 
 **Backend (Go):**
 
-- Hardware-Abstraction-Layer für Sensoren und Bewässerung
-- API-Endpunkte für Pflanzenverwaltung und Monitoring
-- Event-System für automatisierte Reaktionen
-- Datenpersistierung für Sensor-Logs und Konfiguration
+- **Autonomous Core:** Zentraler autonomer Betriebskern
+- **Local MQTT Broker:** Embedded MQTT für Device Discovery
+- **Circuit Breaker:** Robuste externe Service-Integration
+- **State Machine:** Definierte autonome Entscheidungslogik
+- **Offline Queue:** Persistente Datenspeicherung bei Ausfällen
+- **Graceful Degradation:** Intelligente Funktionsreduktion
+- **Local Decision Engine:** KI-basierte lokale Entscheidungen
 
 **Frontend (Next.js):**
 
-- Dashboard-Komponenten für 20 Pflanzmodule
-- Real-Time Datenvisualisierung (Charts, Gauges)
-- Steuerelemente für manuelle Bewässerung
-- Benachrichtigungssystem für Wartungsalerts
+- **Offline-First UI:** Funktioniert auch ohne Internet
+- **Local API Cache:** Zwischenspeicherung für bessere UX
+- **Progressive Web App:** Installation auf mobilen Geräten
+- **Local Notification System:** Browser-basierte Alerts
+- **Autonomous Status Dashboard:** Übersicht über Betriebsmodi
+
+**Integration-Strategien:**
+
+1. **Home Assistant Discovery:** Nur wenn erreichbar, sonst lokaler MQTT
+2. **Cloud-Sync:** Optionale Synchronisation, lokale Priorität
+3. **Internet-abhängige Features:** Graceful Degradation bei Ausfall
+4. **Lokales WebUI:** Primary Interface für alle Funktionen
+5. **Emergency Protocols:** Definierte Notfall-Verfahren
 
 **Kompatibilität:**
-Die Erweiterungen bauen vollständig auf der bestehenden Go/Next.js-Architektur auf und erweitern diese um die spezifischen Anforderungen der Raumklima-Pflanzenwand.
+Die autonomen Erweiterungen sind vollständig abwärtskompatibel und erweitern die bestehende Go/Next.js-Architektur um Autonomie-Features ohne Breaking Changes. Das System kann sowohl autonom als auch voll-integriert betrieben werden.
 
 ---
 
@@ -882,15 +1581,15 @@ Reduzierte Systemkonfiguration:
 
 **Hardware-Konfiguration Prototyp:**
 
-| Komponente               | Prototyp (MVP)       | Finale Version      | Kosteneinsparung |
-| ------------------------ | -------------------- | ------------------- | ---------------- |
-| **Abmessungen**          | 1×1m (4 Module)      | 2,8×2,3m (20 Module) | -80% Material    |
-| **Raspberry Pi**         | Zero 2W              | Zero 2W             | Identisch        |
-| **Sensoren**             | 1 pro Typ           | 3 Zonen × Sensoren  | -66% Sensoren    |
-| **Bewässerung**          | 1 Pumpe, 2 Ventile   | 1 Pumpe, 7 Ventile  | -71% Ventile     |
-| **LED-Beleuchtung**      | 2 Strips (40W)       | 6 Strips (144W)     | -72% LED-Power   |
-| **Wasserreservoir**      | 25 Liter             | 100 Liter           | -75% Kapazität   |
-| **Gesamtgewicht**        | ~60 kg               | ~230 kg             | -74% Gewicht     |
+| Komponente          | Prototyp (MVP)     | Finale Version       | Kosteneinsparung |
+| ------------------- | ------------------ | -------------------- | ---------------- |
+| **Abmessungen**     | 1×1m (4 Module)    | 2,8×2,3m (20 Module) | -80% Material    |
+| **Raspberry Pi**    | Zero 2W            | Zero 2W              | Identisch        |
+| **Sensoren**        | 1 pro Typ          | 3 Zonen × Sensoren   | -66% Sensoren    |
+| **Bewässerung**     | 1 Pumpe, 2 Ventile | 1 Pumpe, 7 Ventile   | -71% Ventile     |
+| **LED-Beleuchtung** | 2 Strips (40W)     | 6 Strips (144W)      | -72% LED-Power   |
+| **Wasserreservoir** | 25 Liter           | 100 Liter            | -75% Kapazität   |
+| **Gesamtgewicht**   | ~60 kg             | ~230 kg              | -74% Gewicht     |
 
 **Pflanzenauswahl Prototyp (wissenschaftlich optimiert):**
 
@@ -901,20 +1600,889 @@ Reduzierte Systemkonfiguration:
 
 **Budget-Kalkulation Prototyp:**
 
-| Kategorie            | Prototyp-Kosten | Finale Kosten | Anteil |
-| -------------------- | --------------- | ------------- | ------ |
-| **Struktur/Material** | €150            | €800          | 19%    |
-| **Elektronik**       | €200            | €350          | 57%    |
-| **Bewässerung**      | €100            | €400          | 25%    |
-| **LED-Beleuchtung**  | €80             | €300          | 27%    |
-| **Pflanzen/Substrat** | €70             | €450          | 16%    |
-| **Gesamt**           | **€600**        | **€2.300**    | **26%** |
+| Kategorie             | Prototyp-Kosten | Finale Kosten | Anteil  |
+| --------------------- | --------------- | ------------- | ------- |
+| **Struktur/Material** | €150            | €800          | 19%     |
+| **Elektronik**        | €200            | €350          | 57%     |
+| **Bewässerung**       | €100            | €400          | 25%     |
+| **LED-Beleuchtung**   | €80             | €300          | 27%     |
+| **Pflanzen/Substrat** | €70             | €450          | 16%     |
+| **Gesamt**            | **€600**        | **€2.300**    | **26%** |
 
-### 9.2 Staging-Umgebung und Entwicklungsinfrastruktur
+### 9.2 Blue-Green Deployment Strategie für IoT-Pflanzenwand
 
-#### 9.2.1 Hardware-Staging Setup
+#### 9.2.1 Zero-Downtime Deployment-Architektur
 
-**Entwicklungsumgebung (3-Schichten-Architektur):**
+**Problemstellung für IoT-Raumklima-Systeme:**
+
+Traditionelle Deployment-Strategien sind für Pflanzenwände ungeeignet, da:
+- **Bewässerung darf nie unterbrochen werden** (Pflanzen können binnen Stunden Schäden erleiden)
+- **Sensor-Kalibrierung und Hardware-State** müssen zwischen Versionen übertragen werden
+- **Pi Zero 2W Constraints:** Limitierter RAM/Storage für parallele Environments
+- **Rollback-Sicherheit:** Bei kritischen Fehlern sofortiger Rollback ohne Datenverlust
+
+#### 9.2.2 Adaptive Blue-Green für Resource-limitierte Hardware
+
+**Container-basierte Blue-Green Implementation:**
+
+```
+Pi Zero 2W (512MB RAM) - Blue-Green Setup:
+┌─────────────────────────────────────────────────────────────────┐
+│                    Physical Raspberry Pi Zero 2W               │
+│                                                                 │
+│  ┌─────────────────────┐    ┌─────────────────────┐            │
+│  │    Blue Version     │    │   Green Version     │            │
+│  │ (Currently Active)  │    │  (Staging/Update)   │            │
+│  │ ┌─────────────────┐ │    │ ┌─────────────────┐ │ 256MB each │
+│  │ │ Go Backend      │ │    │ │ Go Backend      │ │            │
+│  │ │ (Port 5000)     │ │    │ │ (Port 5001)     │ │            │
+│  │ │ Next.js Frontend│ │    │ │ Next.js Frontend│ │            │
+│  │ │ (Port 3000)     │ │    │ │ (Port 3001)     │ │            │
+│  │ └─────────────────┘ │    │ └─────────────────┘ │            │
+│  └─────────────────────┘    └─────────────────────┘            │
+│           │ Active               │ Passive                      │
+│           ▼                      ▼                              │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              Shared Hardware Interface                     │ │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │ │
+│  │  │ GPIO Broker │ │ State Sync  │ │ Hardware    │           │ │
+│  │  │ (Port 8080) │ │ (SQLite)    │ │ Controller  │           │ │
+│  │  └─────────────┘ └─────────────┘ └─────────────┘           │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │               Hardware Layer (Direct GPIO)                 │ │
+│  │  Sensoren  │  Pumpen   │  Ventile  │  LED-Controller      │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+
+Load Balancer (nginx):
+  Production Traffic → Blue (5000, 3000)
+  Health Checks     → Green (5001, 3001)
+```
+
+#### 9.2.3 Hardware-State Synchronisation
+
+**Kritische State-Komponenten für Pflanzenwand:**
+
+```go
+// state_sync.go - Hardware State Management
+type PlantWallState struct {
+    SensorCalibrations map[string]CalibrationData `json:"sensor_calibrations"`
+    PlantProfiles      map[int]PlantProfile       `json:"plant_profiles"`
+    WateringHistory    []WateringEvent            `json:"watering_history"`
+    SystemHealth       SystemHealthMetrics        `json:"system_health"`
+    LastMaintenance    time.Time                  `json:"last_maintenance"`
+    CriticalAlerts     []Alert                    `json:"critical_alerts"`
+}
+
+type StateManager struct {
+    statePath       string
+    syncInterval    time.Duration
+    hardwareBroker  *HardwareBroker
+    versionActive   string // "blue" or "green"
+}
+
+func (sm *StateManager) SynchronizeToNewVersion(targetVersion string) error {
+    log.Printf("Starting state synchronization from %s to %s", sm.versionActive, targetVersion)
+    
+    // 1. Capture current state from active version
+    currentState, err := sm.captureCurrentState()
+    if err != nil {
+        return fmt.Errorf("failed to capture current state: %w", err)
+    }
+    
+    // 2. Transfer critical sensor calibrations
+    err = sm.transferSensorCalibrations(targetVersion, currentState.SensorCalibrations)
+    if err != nil {
+        return fmt.Errorf("sensor calibration transfer failed: %w", err)
+    }
+    
+    // 3. Sync watering schedules and history
+    err = sm.transferWateringState(targetVersion, currentState)
+    if err != nil {
+        return fmt.Errorf("watering state transfer failed: %w", err)
+    }
+    
+    // 4. Validate state integrity in target version
+    return sm.validateStateIntegrity(targetVersion)
+}
+
+func (sm *StateManager) transferSensorCalibrations(targetVersion string, calibrations map[string]CalibrationData) error {
+    for sensorID, calibration := range calibrations {
+        // Transfer via GPIO Broker to prevent hardware conflicts
+        payload := TransferPayload{
+            Type:        "calibration",
+            SensorID:    sensorID,
+            Calibration: calibration,
+            Timestamp:   time.Now(),
+        }
+        
+        err := sm.hardwareBroker.TransferToVersion(targetVersion, payload)
+        if err != nil {
+            return fmt.Errorf("failed to transfer calibration for sensor %s: %w", sensorID, err)
+        }
+        
+        log.Printf("Transferred calibration for sensor %s: pH offset %.3f", sensorID, calibration.Offset)
+    }
+    return nil
+}
+```
+
+#### 9.2.4 GPIO Hardware Broker für sichere Switches
+
+**Problem:** Zwei Container können nicht gleichzeitig auf dieselben GPIO-Pins zugreifen
+
+**Lösung:** Hardware Abstraction Layer mit exklusiven Zugriffsrechten
+
+```go
+// hardware_broker.go - Exclusive GPIO Access Management
+type HardwareBroker struct {
+    activeVersion    string
+    gpioLocks        map[string]*sync.Mutex
+    hardwareDrivers  map[string]HardwareDriver
+    switchInProgress bool
+    emergencyStop    chan bool
+}
+
+type HardwareDriver interface {
+    Initialize() error
+    ReadSensors() (SensorReadings, error)
+    ControlActuators(commands []ActuatorCommand) error
+    GetState() HardwareState
+    Shutdown() error
+}
+
+func (hb *HardwareBroker) AtomicSwitch(fromVersion, toVersion string) error {
+    hb.switchInProgress = true
+    defer func() { hb.switchInProgress = false }()
+    
+    log.Printf("Starting atomic switch from %s to %s", fromVersion, toVersion)
+    
+    // 1. Pre-switch health check
+    if !hb.validateVersionHealth(toVersion) {
+        return fmt.Errorf("target version %s failed health check", toVersion)
+    }
+    
+    // 2. Graceful shutdown of active version (with state preservation)
+    err := hb.gracefulShutdown(fromVersion)
+    if err != nil {
+        return fmt.Errorf("graceful shutdown failed: %w", err)
+    }
+    
+    // 3. Hardware ownership transfer (atomic)
+    err = hb.transferHardwareOwnership(fromVersion, toVersion)
+    if err != nil {
+        // CRITICAL: Rollback immediately
+        hb.emergencyRollback(fromVersion)
+        return fmt.Errorf("hardware transfer failed: %w", err)
+    }
+    
+    // 4. Activate new version
+    err = hb.activateVersion(toVersion)
+    if err != nil {
+        // CRITICAL: Rollback immediately
+        hb.emergencyRollback(fromVersion)
+        return fmt.Errorf("activation failed: %w", err)
+    }
+    
+    hb.activeVersion = toVersion
+    log.Printf("Atomic switch completed successfully. Active version: %s", toVersion)
+    return nil
+}
+
+func (hb *HardwareBroker) gracefulShutdown(version string) error {
+    // 1. Stop all scheduled watering operations
+    err := hb.stopWateringOperations(version)
+    if err != nil {
+        return err
+    }
+    
+    // 2. Save current sensor readings
+    readings, err := hb.captureCurrentReadings(version)
+    if err != nil {
+        return err
+    }
+    
+    // 3. Persist critical state
+    return hb.persistCriticalState(version, readings)
+}
+
+func (hb *HardwareBroker) transferHardwareOwnership(from, to string) error {
+    // 1. Acquire exclusive GPIO locks
+    for pin, lock := range hb.gpioLocks {
+        lock.Lock()
+        log.Printf("Acquired exclusive lock for GPIO pin %s", pin)
+    }
+    
+    // 2. Initialize hardware drivers for new version
+    driver := hb.hardwareDrivers[to]
+    err := driver.Initialize()
+    if err != nil {
+        hb.releaseAllLocks()
+        return fmt.Errorf("driver initialization failed: %w", err)
+    }
+    
+    // 3. Test hardware responsiveness
+    _, err = driver.ReadSensors()
+    if err != nil {
+        hb.releaseAllLocks()
+        return fmt.Errorf("hardware test failed: %w", err)
+    }
+    
+    // 4. Shutdown old version drivers
+    oldDriver := hb.hardwareDrivers[from]
+    err = oldDriver.Shutdown()
+    if err != nil {
+        log.Printf("Warning: Old driver shutdown incomplete: %v", err)
+    }
+    
+    return nil
+}
+```
+
+#### 9.2.5 Health-Check Implementierung mit Pflanzen-spezifischen Metriken
+
+```go
+// health_check.go - Pflanzenwand-spezifische Health Checks
+type PlantWallHealthChecker struct {
+    sensorThresholds  map[string]SensorThreshold
+    wateringValidator *WateringValidator
+    plantHealthModel  *PlantHealthModel
+}
+
+type HealthCheckResult struct {
+    Status           HealthStatus `json:"status"`
+    SensorHealth     map[string]SensorHealth `json:"sensor_health"`
+    WateringSystem   WateringSystemHealth `json:"watering_system"`
+    PlantConditions  []PlantCondition `json:"plant_conditions"`
+    SystemMetrics    SystemMetrics `json:"system_metrics"`
+    ReadyForSwitch   bool `json:"ready_for_switch"`
+    CriticalAlerts   []Alert `json:"critical_alerts"`
+}
+
+func (hc *PlantWallHealthChecker) ComprehensiveHealthCheck(version string) HealthCheckResult {
+    result := HealthCheckResult{
+        Status: HealthStatusGreen,
+        SensorHealth: make(map[string]SensorHealth),
+        ReadyForSwitch: true,
+    }
+    
+    // 1. Sensor Plausibility Checks
+    for sensorID, sensor := range hc.getSensors(version) {
+        reading, err := sensor.Read()
+        if err != nil {
+            result.Status = HealthStatusRed
+            result.ReadyForSwitch = false
+            result.CriticalAlerts = append(result.CriticalAlerts, Alert{
+                Type: AlertTypeSensorFailure,
+                Message: fmt.Sprintf("Sensor %s failed: %v", sensorID, err),
+                Severity: SeverityCritical,
+            })
+            continue
+        }
+        
+        // Plausibility validation
+        if !hc.isPlausibleReading(sensorID, reading) {
+            result.Status = HealthStatusYellow
+            result.CriticalAlerts = append(result.CriticalAlerts, Alert{
+                Type: AlertTypeSensorDrift,
+                Message: fmt.Sprintf("Sensor %s reading implausible: %.2f", sensorID, reading.Value),
+                Severity: SeverityWarning,
+            })
+        }
+        
+        result.SensorHealth[sensorID] = SensorHealth{
+            Status: HealthStatusGreen,
+            LastReading: reading,
+            DriftPercentage: hc.calculateDrift(sensorID, reading),
+        }
+    }
+    
+    // 2. Watering System Validation
+    wateringHealth := hc.wateringValidator.ValidateSystem(version)
+    result.WateringSystem = wateringHealth
+    if wateringHealth.Status != HealthStatusGreen {
+        result.ReadyForSwitch = false
+    }
+    
+    // 3. Plant Condition Assessment
+    for moduleID := 1; moduleID <= 4; moduleID++ {
+        condition := hc.plantHealthModel.AssessPlantHealth(version, moduleID)
+        result.PlantConditions = append(result.PlantConditions, condition)
+        
+        if condition.StressLevel > 0.7 {
+            result.Status = HealthStatusYellow
+            result.CriticalAlerts = append(result.CriticalAlerts, Alert{
+                Type: AlertTypePlantStress,
+                Message: fmt.Sprintf("Plant in module %d showing stress: %.1f%%", moduleID, condition.StressLevel*100),
+                Severity: SeverityWarning,
+            })
+        }
+    }
+    
+    // 4. System Performance Metrics
+    metrics := hc.collectSystemMetrics(version)
+    result.SystemMetrics = metrics
+    
+    if metrics.CPUUsage > 85.0 || metrics.MemoryUsage > 90.0 {
+        result.ReadyForSwitch = false
+        result.Status = HealthStatusRed
+    }
+    
+    return result
+}
+
+func (hc *PlantWallHealthChecker) isPlausibleReading(sensorID string, reading SensorReading) bool {
+    threshold, exists := hc.sensorThresholds[sensorID]
+    if !exists {
+        return true // Unbekannter Sensor, akzeptieren
+    }
+    
+    // Plausibilitätsprüfungen basierend auf Sensortyp
+    switch reading.Type {
+    case SensorTypePH:
+        return reading.Value >= 0.0 && reading.Value <= 14.0
+    case SensorTypeSoilMoisture:
+        return reading.Value >= 0.0 && reading.Value <= 100.0
+    case SensorTypeTemperature:
+        return reading.Value >= -10.0 && reading.Value <= 50.0 // Zimmerbedingungen
+    case SensorTypeHumidity:
+        return reading.Value >= 0.0 && reading.Value <= 100.0
+    default:
+        return true
+    }
+}
+```
+
+#### 9.2.6 Automated Rollback und Disaster Recovery
+
+```go
+// rollback_manager.go - Disaster Recovery für Pflanzenwände
+type RollbackManager struct {
+    stateSnapshots    map[string]StateSnapshot
+    hardwareBroker    *HardwareBroker
+    emergencyProtocol *EmergencyProtocol
+    rollbackTimeout   time.Duration
+}
+
+type StateSnapshot struct {
+    Version           string                     `json:"version"`
+    Timestamp         time.Time                  `json:"timestamp"`
+    SensorData        map[string]SensorReading   `json:"sensor_data"`
+    WateringState     WateringSystemState        `json:"watering_state"`
+    PlantConditions   []PlantCondition           `json:"plant_conditions"`
+    SystemMetrics     SystemMetrics              `json:"system_metrics"`
+    ConfigHash        string                     `json:"config_hash"`
+}
+
+func (rm *RollbackManager) AutomaticRollbackDecision(currentVersion string, healthResults []HealthCheckResult) bool {
+    // Rollback criteria für Pflanzenwand-spezifische Probleme
+    
+    // 1. Critical System Failures
+    for _, result := range healthResults {
+        if result.Status == HealthStatusRed {
+            log.Printf("CRITICAL: Health status RED detected, initiating automatic rollback")
+            return true
+        }
+        
+        // 2. Watering System Failures
+        if result.WateringSystem.Status == HealthStatusRed {
+            log.Printf("CRITICAL: Watering system failure, plants at risk - immediate rollback")
+            return true
+        }
+        
+        // 3. Multiple Sensor Failures
+        failedSensors := 0
+        for _, sensorHealth := range result.SensorHealth {
+            if sensorHealth.Status == HealthStatusRed {
+                failedSensors++
+            }
+        }
+        if failedSensors >= 2 {
+            log.Printf("CRITICAL: Multiple sensor failures (%d), rollback required", failedSensors)
+            return true
+        }
+        
+        // 4. Plant Stress Indicators
+        criticalPlants := 0
+        for _, condition := range result.PlantConditions {
+            if condition.StressLevel > 0.9 {
+                criticalPlants++
+            }
+        }
+        if criticalPlants >= 2 {
+            log.Printf("CRITICAL: Multiple plants in critical condition (%d), rollback required", criticalPlants)
+            return true
+        }
+    }
+    
+    return false
+}
+
+func (rm *RollbackManager) ExecuteEmergencyRollback(targetVersion string) error {
+    log.Printf("EMERGENCY ROLLBACK initiated to version %s", targetVersion)
+    
+    // 1. Immediate safety measures
+    err := rm.emergencyProtocol.ActivateSafeMode()
+    if err != nil {
+        log.Printf("CRITICAL: Emergency safe mode activation failed: %v", err)
+    }
+    
+    // 2. Stop all watering operations immediately
+    err = rm.hardwareBroker.EmergencyStopAllOperations()
+    if err != nil {
+        log.Printf("CRITICAL: Emergency stop failed: %v", err)
+    }
+    
+    // 3. Fast hardware switch (skip some validations for speed)
+    err = rm.hardwareBroker.FastSwitch(targetVersion)
+    if err != nil {
+        log.Printf("CRITICAL: Fast switch failed: %v", err)
+        return rm.activateManualMode()
+    }
+    
+    // 4. Restore last known good state
+    snapshot, exists := rm.stateSnapshots[targetVersion]
+    if exists {
+        err = rm.restoreSnapshot(snapshot)
+        if err != nil {
+            log.Printf("WARNING: Snapshot restore failed: %v", err)
+        }
+    }
+    
+    // 5. Validate basic functionality
+    err = rm.validateBasicFunctionality(targetVersion)
+    if err != nil {
+        log.Printf("CRITICAL: Post-rollback validation failed: %v", err)
+        return rm.activateManualMode()
+    }
+    
+    log.Printf("Emergency rollback completed successfully")
+    return nil
+}
+
+func (rm *RollbackManager) activateManualMode() error {
+    // Letzter Ausweg: Manueller Modus mit Basis-Bewässerung
+    log.Printf("ACTIVATING MANUAL MODE - Automated systems failed")
+    
+    // Basis-Bewässerung alle 12 Stunden
+    go rm.emergencyWateringLoop()
+    
+    // Benachrichtigung an Administrator
+    return rm.sendCriticalAlert("SYSTEM FAILURE - Manual intervention required")
+}
+```
+
+#### 9.2.7 Deployment Automation für Blue-Green
+
+**Docker Compose für Blue-Green Setup:**
+
+```yaml
+# docker-compose.bluegreen.yml
+version: "3.8"
+
+services:
+  # Blue Version (Currently Active)
+  plantwall-blue:
+    build:
+      context: ./src/plant-wall-control
+      dockerfile: Dockerfile
+    container_name: plantwall-blue
+    ports:
+      - "5000:5000"
+      - "3000:3000"
+    environment:
+      - ENV=production
+      - VERSION=blue
+      - GPIO_BROKER_URL=http://gpio-broker:8080
+    volumes:
+      - ./data/blue:/opt/plantwall/data
+      - /dev/gpiomem:/dev/gpiomem
+    devices:
+      - /dev/gpiomem:/dev/gpiomem
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "./health_check.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Green Version (Staging)
+  plantwall-green:
+    build:
+      context: ./src/plant-wall-control
+      dockerfile: Dockerfile
+    container_name: plantwall-green
+    ports:
+      - "5001:5000"
+      - "3001:3000"
+    environment:
+      - ENV=staging
+      - VERSION=green
+      - GPIO_BROKER_URL=http://gpio-broker:8080
+    volumes:
+      - ./data/green:/opt/plantwall/data
+      - /dev/gpiomem:/dev/gpiomem
+    devices:
+      - /dev/gpiomem:/dev/gpiomem
+    restart: unless-stopped
+    profiles:
+      - staging
+    healthcheck:
+      test: ["CMD", "./health_check.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hardware Abstraction Layer
+  gpio-broker:
+    build:
+      context: ./src/hardware-broker
+      dockerfile: Dockerfile
+    container_name: gpio-broker
+    ports:
+      - "8080:8080"
+    volumes:
+      - /dev/gpiomem:/dev/gpiomem
+      - ./data/shared:/opt/hardware/state
+    devices:
+      - /dev/gpiomem:/dev/gpiomem
+    privileged: true
+    restart: unless-stopped
+    environment:
+      - ACTIVE_VERSION=blue
+      - STATE_SYNC_INTERVAL=30s
+
+  # Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - plantwall-blue
+    restart: unless-stopped
+
+  # State Synchronization Service
+  state-sync:
+    build:
+      context: ./src/state-sync
+      dockerfile: Dockerfile
+    container_name: state-sync
+    volumes:
+      - ./data:/opt/state-sync/data
+    environment:
+      - SYNC_INTERVAL=60s
+      - BACKUP_RETENTION=7d
+    restart: unless-stopped
+
+  # Monitoring & Alerting
+  monitoring:
+    build:
+      context: ./src/monitoring
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/config:/opt/monitoring/config
+      - ./data/monitoring:/opt/monitoring/data
+    restart: unless-stopped
+```
+
+**Automated Deployment Script:**
+
+```bash
+#!/bin/bash
+# blue_green_deploy.sh - Zero-Downtime Deployment für Pflanzenwand
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.env"
+
+# Deployment Configuration
+CURRENT_VERSION=""
+TARGET_VERSION=""
+DEPLOYMENT_TIMEOUT=300  # 5 Minuten Maximum
+HEALTH_CHECK_RETRIES=6
+ROLLBACK_ON_FAILURE=true
+
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+}
+
+detect_current_version() {
+    CURRENT_VERSION=$(curl -s http://localhost:5000/api/version | jq -r '.version' 2>/dev/null || echo "unknown")
+    if [[ "$CURRENT_VERSION" == "blue" ]]; then
+        TARGET_VERSION="green"
+    else
+        TARGET_VERSION="blue"
+    fi
+    
+    log "Current version: $CURRENT_VERSION, Target version: $TARGET_VERSION"
+}
+
+build_new_version() {
+    log "Building new version: $TARGET_VERSION"
+    
+    # Build Go Backend (Cross-compile für ARM64)
+    cd src/plant-wall-control
+    GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-w -s" -o plant-wall-control-arm64 main.go
+    
+    # Build Next.js Frontend
+    cd ../plant-wall-control-web
+    npm run build
+    
+    # Build Docker images for target version
+    cd "${SCRIPT_DIR}"
+    docker-compose -f docker-compose.bluegreen.yml build plantwall-${TARGET_VERSION}
+    
+    log "Build completed for version: $TARGET_VERSION"
+}
+
+deploy_to_staging() {
+    log "Deploying to staging environment: $TARGET_VERSION"
+    
+    # Start target version in staging mode
+    docker-compose -f docker-compose.bluegreen.yml --profile staging up -d plantwall-${TARGET_VERSION}
+    
+    # Wait for startup
+    sleep 30
+    
+    # Verify staging deployment
+    local staging_port
+    if [[ "$TARGET_VERSION" == "green" ]]; then
+        staging_port=5001
+    else
+        staging_port=5000
+    fi
+    
+    local health_status
+    health_status=$(curl -f http://localhost:${staging_port}/api/health 2>/dev/null | jq -r '.status' || echo "failed")
+    
+    if [[ "$health_status" != "healthy" ]]; then
+        log "ERROR: Staging deployment health check failed"
+        return 1
+    fi
+    
+    log "Staging deployment successful: $TARGET_VERSION"
+}
+
+state_synchronization() {
+    log "Starting state synchronization from $CURRENT_VERSION to $TARGET_VERSION"
+    
+    # Trigger state sync via API
+    sync_result=$(curl -X POST http://localhost:8080/api/sync \
+        -H "Content-Type: application/json" \
+        -d "{\"from_version\": \"${CURRENT_VERSION}\", \"to_version\": \"${TARGET_VERSION}\"}" \
+        2>/dev/null | jq -r '.status' || echo "failed")
+    
+    if [[ "$sync_result" != "success" ]]; then
+        log "ERROR: State synchronization failed"
+        return 1
+    fi
+    
+    # Verify sensor calibrations transferred
+    calibration_check=$(curl -s http://localhost:${staging_port}/api/sensors/calibrations | jq '.[] | select(.status == "active")' | wc -l)
+    
+    if [[ "$calibration_check" -lt 4 ]]; then
+        log "ERROR: Sensor calibration transfer incomplete"
+        return 1
+    fi
+    
+    log "State synchronization completed successfully"
+}
+
+comprehensive_health_check() {
+    local version_port=$1
+    local check_name=$2
+    
+    log "Running comprehensive health check: $check_name"
+    
+    local health_result
+    health_result=$(curl -s http://localhost:${version_port}/api/health/comprehensive 2>/dev/null)
+    
+    if [[ $? -ne 0 ]]; then
+        log "ERROR: Health check API unreachable"
+        return 1
+    fi
+    
+    # Parse health check results
+    local status
+    local sensor_status
+    local watering_status
+    local plant_stress
+    
+    status=$(echo "$health_result" | jq -r '.status')
+    sensor_status=$(echo "$health_result" | jq -r '.sensor_health | length')
+    watering_status=$(echo "$health_result" | jq -r '.watering_system.status')
+    plant_stress=$(echo "$health_result" | jq -r '.plant_conditions | map(.stress_level) | max')
+    
+    # Evaluate health criteria
+    if [[ "$status" == "red" ]]; then
+        log "ERROR: Overall system status is RED"
+        return 1
+    fi
+    
+    if [[ "$watering_status" == "red" ]]; then
+        log "ERROR: Watering system status is RED"
+        return 1
+    fi
+    
+    if [[ $(echo "$plant_stress > 0.8" | bc) -eq 1 ]]; then
+        log "ERROR: Critical plant stress detected: $plant_stress"
+        return 1
+    fi
+    
+    if [[ "$sensor_status" -lt 4 ]]; then
+        log "ERROR: Insufficient healthy sensors: $sensor_status/4"
+        return 1
+    fi
+    
+    log "Health check passed: $check_name"
+    return 0
+}
+
+atomic_switch() {
+    log "Initiating atomic switch from $CURRENT_VERSION to $TARGET_VERSION"
+    
+    # Pre-switch validation
+    if ! comprehensive_health_check "${staging_port}" "pre-switch"; then
+        log "ERROR: Pre-switch health check failed"
+        return 1
+    fi
+    
+    # Execute atomic switch via hardware broker
+    switch_result=$(curl -X POST http://localhost:8080/api/switch \
+        -H "Content-Type: application/json" \
+        -d "{\"from_version\": \"${CURRENT_VERSION}\", \"to_version\": \"${TARGET_VERSION}\"}" \
+        2>/dev/null | jq -r '.status' || echo "failed")
+    
+    if [[ "$switch_result" != "success" ]]; then
+        log "ERROR: Atomic switch failed"
+        return 1
+    fi
+    
+    # Update load balancer
+    sed -i "s/plantwall-${CURRENT_VERSION}/plantwall-${TARGET_VERSION}/g" nginx/nginx.conf
+    docker-compose -f docker-compose.bluegreen.yml restart nginx
+    
+    # Wait for propagation
+    sleep 10
+    
+    # Post-switch validation
+    if ! comprehensive_health_check "5000" "post-switch"; then
+        log "ERROR: Post-switch health check failed, initiating rollback"
+        rollback_deployment
+        return 1
+    fi
+    
+    log "Atomic switch completed successfully"
+    return 0
+}
+
+rollback_deployment() {
+    if [[ "$ROLLBACK_ON_FAILURE" != "true" ]]; then
+        log "Rollback disabled, manual intervention required"
+        return 1
+    fi
+    
+    log "ROLLBACK: Initiating emergency rollback to $CURRENT_VERSION"
+    
+    # Emergency rollback via hardware broker
+    rollback_result=$(curl -X POST http://localhost:8080/api/emergency-rollback \
+        -H "Content-Type: application/json" \
+        -d "{\"target_version\": \"${CURRENT_VERSION}\"}" \
+        2>/dev/null | jq -r '.status' || echo "failed")
+    
+    if [[ "$rollback_result" == "success" ]]; then
+        log "Emergency rollback completed successfully"
+        return 0
+    else
+        log "CRITICAL: Emergency rollback failed - manual intervention required"
+        return 1
+    fi
+}
+
+cleanup_old_version() {
+    log "Cleaning up old version: $CURRENT_VERSION"
+    
+    # Stop old version gracefully
+    docker-compose -f docker-compose.bluegreen.yml stop plantwall-${CURRENT_VERSION}
+    
+    # Remove old containers
+    docker-compose -f docker-compose.bluegreen.yml rm -f plantwall-${CURRENT_VERSION}
+    
+    # Archive old data
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    tar -czf "backups/plantwall-${CURRENT_VERSION}-${timestamp}.tar.gz" "data/${CURRENT_VERSION}"
+    
+    log "Cleanup completed for version: $CURRENT_VERSION"
+}
+
+# Main Deployment Flow
+main() {
+    log "Starting Blue-Green deployment for Plant Wall"
+    
+    # Pre-deployment checks
+    if ! command -v jq &> /dev/null; then
+        log "ERROR: jq is required but not installed"
+        exit 1
+    fi
+    
+    if ! command -v bc &> /dev/null; then
+        log "ERROR: bc is required but not installed"
+        exit 1
+    fi
+    
+    # Deployment sequence
+    detect_current_version
+    
+    if ! build_new_version; then
+        log "ERROR: Build failed"
+        exit 1
+    fi
+    
+    if ! deploy_to_staging; then
+        log "ERROR: Staging deployment failed"
+        exit 1
+    fi
+    
+    if ! state_synchronization; then
+        log "ERROR: State synchronization failed"
+        exit 1
+    fi
+    
+    if ! atomic_switch; then
+        log "ERROR: Atomic switch failed"
+        exit 1
+    fi
+    
+    cleanup_old_version
+    
+    log "Blue-Green deployment completed successfully!"
+    log "Active version is now: $TARGET_VERSION"
+    
+    # Send success notification
+    curl -X POST "${WEBHOOK_URL}" \
+        -H "Content-Type: application/json" \
+        -d "{\"text\": \"🌱 Plant Wall deployment successful: ${TARGET_VERSION} is now active\"}" \
+        2>/dev/null || true
+}
+
+# Execute deployment
+main "$@"
+```
+
+#### 9.2.8 Hardware-Staging Setup mit Blue-Green Integration
+
+**Entwicklungsumgebung (4-Schichten-Architektur):**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -934,13 +2502,22 @@ Reduzierte Systemkonfiguration:
 │  │ + Debug Tools   │  │                 │  │                 │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
+               │ Blue-Green Pipeline
+┌─────────────────────────────────────────────────────────────────┐
+│                   Staging Stage 3                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ Pi Zero 2W      │  │ Blue Version    │  │ Green Version   │ │
+│  │ Blue-Green Test │  │ (Active)        │  │ (Staging)       │ │
+│  │ + Monitoring    │  │                 │  │                 │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
                │ Code Deployment Pipeline
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Production Stage 3                           │
+│                   Production Stage 4                           │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │ Pi Zero 2W      │  │ Production      │  │ Full Prototyp   │ │
-│  │ Optimized Build │  │ Sensor Array    │  │ (4 Modules)     │ │
-│  │ + Monitoring    │  │                 │  │                 │ │
+│  │ Blue-Green Prod │  │ Blue-Green      │  │ (4 Modules)     │ │
+│  │ + Auto-Rollback │  │                 │  │                 │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -979,9 +2556,9 @@ name: Plant Wall Deployment Pipeline
 
 on:
   push:
-    branches: [ main, staging, prototyp ]
+    branches: [main, staging, prototyp]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test-mock-hardware:
@@ -990,23 +2567,23 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: "1.21"
       - name: Run Unit Tests (Mock Hardware)
         run: |
           cd src/plant-wall-control
           go test ./... -tags=mock
-          
+
   test-integration:
-    runs-on: self-hosted  # Raspberry Pi 4B Test-System
+    runs-on: self-hosted # Raspberry Pi 4B Test-System
     if: github.ref == 'refs/heads/staging'
     steps:
       - name: Test Real Hardware Integration
         run: |
           cd /opt/plantwall-staging
           ./run_integration_tests.sh
-          
+
   deploy-prototyp:
-    runs-on: self-hosted  # Pi Zero 2W im Prototyp
+    runs-on: self-hosted # Pi Zero 2W im Prototyp
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Cross-compile for ARM
@@ -1022,16 +2599,16 @@ jobs:
 
 **Hardware-Integration Tests:**
 
-| Test-Kategorie           | Prototyp-Test                                  | Akzeptanzkriterien                        | Automatisiert |
-| ------------------------ | ---------------------------------------------- | ----------------------------------------- | ------------- |
-| **Sensor-Kalibrierung** | pH 4.0, 7.0, 10.0 Referenzlösungen testen     | ±0.1 pH Genauigkeit                      | ✓ Ja          |
-| **Bewässerungs-Präzision** | 100ml Sollmenge vs. gemessene Istmenge        | ±10% Abweichung maximal                  | ✓ Ja          |
-| **Sensor-Drift**        | 24h Langzeitmessung ohne Neukalibrierung      | <5% Drift pro Tag                        | ✓ Ja          |
-| **Failsafe-Modi**       | Sensor-Ausfall simulieren                     | System läuft 72h im Fallback-Modus      | ✓ Ja          |
-| **Power-Management**     | Stromausfall-Recovery                         | <5min Restart nach Netzwiederkehr        | ✓ Ja          |
-| **WebSocket-Latenz**     | Real-time Dashboard Updates                   | <2s Latenz für Sensor-Updates            | ✓ Ja          |
-| **API-Performance**      | 100 gleichzeitige Status-Requests             | <500ms Response Time (95. Perzentil)     | ✓ Ja          |
-| **Datenpersistenz**      | SQLite mit 10.000 Sensor-Einträgen            | <100ms Query-Zeit für Dashboard          | ✓ Ja          |
+| Test-Kategorie             | Prototyp-Test                             | Akzeptanzkriterien                   | Automatisiert |
+| -------------------------- | ----------------------------------------- | ------------------------------------ | ------------- |
+| **Sensor-Kalibrierung**    | pH 4.0, 7.0, 10.0 Referenzlösungen testen | ±0.1 pH Genauigkeit                  | ✓ Ja          |
+| **Bewässerungs-Präzision** | 100ml Sollmenge vs. gemessene Istmenge    | ±10% Abweichung maximal              | ✓ Ja          |
+| **Sensor-Drift**           | 24h Langzeitmessung ohne Neukalibrierung  | <5% Drift pro Tag                    | ✓ Ja          |
+| **Failsafe-Modi**          | Sensor-Ausfall simulieren                 | System läuft 72h im Fallback-Modus   | ✓ Ja          |
+| **Power-Management**       | Stromausfall-Recovery                     | <5min Restart nach Netzwiederkehr    | ✓ Ja          |
+| **WebSocket-Latenz**       | Real-time Dashboard Updates               | <2s Latenz für Sensor-Updates        | ✓ Ja          |
+| **API-Performance**        | 100 gleichzeitige Status-Requests         | <500ms Response Time (95. Perzentil) | ✓ Ja          |
+| **Datenpersistenz**        | SQLite mit 10.000 Sensor-Einträgen        | <100ms Query-Zeit für Dashboard      | ✓ Ja          |
 
 **Bewässerungs-Algorithmus Tests:**
 
@@ -1065,13 +2642,13 @@ func TestWateringAlgorithms(t *testing.T) {
         {
             name:           "Überwässerungsschutz",
             soilMoisture:   20.0,
-            plantType:      "sansevieria", 
+            plantType:      "sansevieria",
             lastWatering:   time.Now().Add(-30 * time.Minute), // Zu kurz her
             expectedAction: "wait",
             expectedDuration: 0,
         },
     }
-    
+
     for _, scenario := range scenarios {
         t.Run(scenario.name, func(t *testing.T) {
             action, duration := calculateWateringAction(
@@ -1093,6 +2670,7 @@ func TestWateringAlgorithms(t *testing.T) {
 **Phase 1: Foundation Sprint (2 Wochen) - "Hardware Setup"**
 
 **Sprint Goals:**
+
 - Raspberry Pi Zero 2W Setup und Basis-Image
 - GPIO-Integration für 4 Sensoren + 2 Aktoren
 - Grundlegende Go HTTP API
@@ -1112,7 +2690,7 @@ Akzeptanzkriterien:
 
 DoD: GPIO-Auto-Discovery funktional, Tests bestehen, Logging implementiert
 
-US-P1.2: Basis-Sensordatenerfassung  
+US-P1.2: Basis-Sensordatenerfassung
 Als System möchte ich alle 30 Sekunden Sensordaten erfassen,
 damit kontinuierliches Monitoring möglich ist.
 
@@ -1127,6 +2705,7 @@ DoD: Datenbank-Schema, REST-API Endpunkte, 24h Stabilitätstest
 **Phase 2: Automation Sprint (3 Wochen) - "Smart Watering"**
 
 **Sprint Goals:**
+
 - Automatische Bewässerungslogik
 - Pflanzen-spezifische Algorithmen
 - Failsafe-Mechanismen
@@ -1152,7 +2731,7 @@ damit keine Schäden entstehen.
 
 Akzeptanzkriterien:
 - Given Wassertank ist leer ODER Sensor defekt ODER Überschwemmung
-- When kritischer Zustand erkannt wird  
+- When kritischer Zustand erkannt wird
 - Then wird Bewässerung gestoppt und Administrator benachrichtigt
 
 DoD: Alle Failsafe-Modi getestet, Recovery-Verhalten definiert
@@ -1161,6 +2740,7 @@ DoD: Alle Failsafe-Modi getestet, Recovery-Verhalten definiert
 **Phase 3: User Experience Sprint (2 Wochen) - "Dashboard & Monitoring"**
 
 **Sprint Goals:**
+
 - Vollständiges Web-Dashboard
 - Mobile-responsive Design
 - Historische Datenauswertung
@@ -1198,6 +2778,7 @@ DoD: Benachrichtigungs-System, E-Mail-Integration optional, Acknowledge-Funktion
 **Meilenstein M1: Hardware-Integration (nach Phase 1)**
 
 **Erfolgskriterien:**
+
 - ✅ Alle 4 Sensoren liefern plausible Daten
 - ✅ 2 Bewässerungsventile funktional steuerbar
 - ✅ API Response-Zeiten <500ms
@@ -1205,6 +2786,7 @@ DoD: Benachrichtigungs-System, E-Mail-Integration optional, Acknowledge-Funktion
 - ✅ GPIO-Konfiguration reproduzierbar
 
 **Akzeptanztest:**
+
 ```bash
 # Automatisierter Akzeptanztest M1
 curl http://plantwall-prototyp:5000/api/sensors
@@ -1217,6 +2799,7 @@ curl -X POST http://plantwall-prototyp:5000/api/watering/module/1
 **Meilenstein M2: Automatisierung (nach Phase 2)**
 
 **Erfolgskriterien:**
+
 - ✅ Automatische Bewässerung für 72h ohne manuellen Eingriff
 - ✅ Pflanzen-spezifische Behandlung (4 verschiedene Profile)
 - ✅ Failsafe-Modi funktional (getestet mit simulierten Ausfällen)
@@ -1224,6 +2807,7 @@ curl -X POST http://plantwall-prototyp:5000/api/watering/module/1
 - ✅ Datenhistorie über 30 Tage verfügbar
 
 **Akzeptanztest:**
+
 ```bash
 # 72h Automatik-Test
 ./test_automation_72h.sh
@@ -1234,6 +2818,7 @@ curl -X POST http://plantwall-prototyp:5000/api/watering/module/1
 **Meilenstein M3: Produktionsreife (nach Phase 3)**
 
 **Erfolgskriterien:**
+
 - ✅ Dashboard funktional auf Desktop und Mobile
 - ✅ Real-time Updates <2s Latenz
 - ✅ Benachrichtigungssystem aktiv
@@ -1246,14 +2831,14 @@ curl -X POST http://plantwall-prototyp:5000/api/watering/module/1
 
 **Risiko-Matrix Prototyp:**
 
-| Risiko                    | Wahrscheinlichkeit | Impact | Risk Score | Mitigation-Strategie                      |
-| ------------------------- | ------------------ | ------ | ---------- | ----------------------------------------- |
-| **Hardware-Inkompatibilität** | Mittel (30%)       | Hoch   | 15         | Backup-Hardware, extensive Vorabtest     |
-| **Bewässerungs-Fehlsteuerung** | Niedrig (15%)      | Hoch   | 12         | Failsafe-Modi, manuelle Override-Option  |
-| **Sensor-Drift/Kalibrierung** | Hoch (60%)         | Mittel | 18         | Automatische Rekalibrierung, Redundanz   |
-| **Software-Bugs im Automatik** | Mittel (40%)       | Mittel | 12         | Extensive Unit Tests, Manual Fallback    |
-| **Pi Zero 2W Performance**    | Niedrig (20%)      | Mittel | 6          | Performance-Monitoring, Pi 4B Backup     |
-| **SD-Karten Corruption**      | Hoch (50%)         | Mittel | 15         | Industrial SD-Karten, automatische Backups |
+| Risiko                         | Wahrscheinlichkeit | Impact | Risk Score | Mitigation-Strategie                       |
+| ------------------------------ | ------------------ | ------ | ---------- | ------------------------------------------ |
+| **Hardware-Inkompatibilität**  | Mittel (30%)       | Hoch   | 15         | Backup-Hardware, extensive Vorabtest       |
+| **Bewässerungs-Fehlsteuerung** | Niedrig (15%)      | Hoch   | 12         | Failsafe-Modi, manuelle Override-Option    |
+| **Sensor-Drift/Kalibrierung**  | Hoch (60%)         | Mittel | 18         | Automatische Rekalibrierung, Redundanz     |
+| **Software-Bugs im Automatik** | Mittel (40%)       | Mittel | 12         | Extensive Unit Tests, Manual Fallback      |
+| **Pi Zero 2W Performance**     | Niedrig (20%)      | Mittel | 6          | Performance-Monitoring, Pi 4B Backup       |
+| **SD-Karten Corruption**       | Hoch (50%)         | Mittel | 15         | Industrial SD-Karten, automatische Backups |
 
 #### 9.4.2 Konkrete Mitigation-Implementierung
 
@@ -1273,7 +2858,7 @@ func (r *RedundantSensorArray) ReadSoilMoisture(moduleID int) (float64, error) {
     if err == nil && r.failureDetector.IsPlausible(value) {
         return value, nil
     }
-    
+
     // Fallback auf Backup-Sensor
     log.Printf("Primary sensor %d failed, using backup", moduleID)
     return r.backupSensors[moduleID].Read()
@@ -1296,7 +2881,7 @@ func (w *WateringFailsafe) SafeWatering(moduleID int, duration time.Duration) er
     if todayUsage > w.maxDailyWater {
         return errors.New("daily water limit exceeded")
     }
-    
+
     // Check 2: Emergency Stop aktiviert?
     select {
     case <-w.emergencyStop:
@@ -1304,13 +2889,13 @@ func (w *WateringFailsafe) SafeWatering(moduleID int, duration time.Duration) er
     default:
         // Weiter mit Bewässerung
     }
-    
+
     // Check 3: Maximal 60s Bewässerung pro Zyklus
     if duration > 60*time.Second {
         duration = 60*time.Second
         log.Printf("Watering duration limited to 60s for safety")
     }
-    
+
     return w.executeWatering(moduleID, duration)
 }
 ```
@@ -1329,23 +2914,23 @@ type PrototypMonitor struct {
 
 func (p *PrototypMonitor) ContinuousHealthCheck() {
     ticker := time.NewTicker(30 * time.Second)
-    
+
     for range ticker.C {
         health := p.collectHealthMetrics()
-        
+
         // Critical Alerts
         if health.CPUUsage > 80.0 {
             p.sendAlert("CPU usage critical: %.1f%%", health.CPUUsage)
         }
-        
+
         if health.MemoryUsage > 85.0 {
             p.sendAlert("Memory usage critical: %.1f%%", health.MemoryUsage)
         }
-        
+
         if health.SDCardWearLevel > 90.0 {
             p.sendAlert("SD Card wear critical: %.1f%%", health.SDCardWearLevel)
         }
-        
+
         // Store metrics für historische Analyse
         p.storeHealthMetrics(health)
     }
@@ -1360,21 +2945,25 @@ func (p *PrototypMonitor) ContinuousHealthCheck() {
 # Lessons Learned - Prototyp Phase
 
 ## Hardware
+
 - ✅ **Erfolgreich:** Kapazitive Bodenfeuchtesensoren deutlich zuverlässiger als resistive
-- ⚠️  **Problem:** pH-Sensoren benötigen wöchentliche Kalibrierung, nicht monatlich
+- ⚠️ **Problem:** pH-Sensoren benötigen wöchentliche Kalibrierung, nicht monatlich
 - 🔄 **Anpassung:** Automatische pH-Kalibrierung alle 168h implementiert
 
-## Software  
+## Software
+
 - ✅ **Erfolgreich:** Go Goroutines perfekt für parallele Sensor-Abfragen
-- ⚠️  **Problem:** SQLite-Locks bei hoher Schreiblast
+- ⚠️ **Problem:** SQLite-Locks bei hoher Schreiblast
 - 🔄 **Anpassung:** Write-Puffer mit Batch-Inserts alle 60s
 
 ## User Experience
+
 - ✅ **Erfolgreich:** WebSocket Updates werden von Benutzern sehr positiv wahrgenommen
-- ⚠️  **Problem:** Mobile Dashboard nicht intuitiv bedienbar
+- ⚠️ **Problem:** Mobile Dashboard nicht intuitiv bedienbar
 - 🔄 **Anpassung:** Touch-optimierte Steuerelemente für nächste Iteration
 
 ## Empfehlungen für finale Implementation:
+
 1. Industrial-Grade SD-Karten verwenden (SLC statt MLC)
 2. Sensor-Kalibrierung häufiger als ursprünglich geplant
 3. Backup-Hardware für kritische Komponenten
@@ -1388,7 +2977,7 @@ func (p *PrototypMonitor) ContinuousHealthCheck() {
 ```
 Prototyp (4 Module) → Pilot (12 Module) → Production (20 Module)
     600€                   1.400€              2.300€
-    
+
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │   Phase 1   │───▶│   Phase 2   │───▶│   Phase 3   │
 │ Technical   │    │ Operational │    │   Market    │
@@ -1400,12 +2989,14 @@ Prototyp (4 Module) → Pilot (12 Module) → Production (20 Module)
 **Skalierungs-Kriterien:**
 
 **Phase 1 → Phase 2 (Prototyp zu Pilot):**
+
 - ✅ 30 Tage autonomer Betrieb ohne kritische Ausfälle
-- ✅ Bewässerungs-Algorithmus optimiert und validiert  
+- ✅ Bewässerungs-Algorithmus optimiert und validiert
 - ✅ Hardware-Kosten unter 130€/Modul
 - ✅ Installation durch Laien in <8 Stunden möglich
 
 **Phase 2 → Phase 3 (Pilot zu Production):**
+
 - ✅ 90 Tage Betrieb mit <5% Wartungsaufwand
 - ✅ Messbare Luftqualitätsverbesserung nachgewiesen
 - ✅ User Experience Score >4.5/5.0
