@@ -1,0 +1,786 @@
+/* Plant Wall Control - Main Styles */
+
+:root {
+    --primary-color: #2ecc71;
+    --secondary-color: #3498db;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --error-color: #e74c3c;
+    --background-color: #f5f6fa;
+    --card-background: #ffffff;
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --border-color: #ddd;
+    --border-radius: 8px;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* Navigation */
+.main-navigation {
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    height: 64px;
+}
+
+.nav-brand a {
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.brand-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.brand-text:hover {
+    opacity: 0.8;
+}
+
+.nav-links {
+    display: flex;
+    gap: 1rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+}
+
+.nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.nav-icon {
+    font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+    .nav-container {
+        padding: 0 1rem;
+    }
+    
+    .brand-text {
+        font-size: 1.3rem;
+    }
+    
+    .nav-links {
+        gap: 0.5rem;
+    }
+    
+    .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    .nav-link span:not(.nav-icon) {
+        display: none;
+    }
+    
+    .nav-icon {
+        font-size: 1.3rem;
+    }
+}
+
+/* Layout Components */
+.plant-wall-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+.app-header h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.app-header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.app-main {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.app-footer {
+    background-color: var(--text-secondary);
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.controls-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+/* Card Components */
+.status-panel,
+.lighting-control,
+.watering-control,
+.settings-section {
+    background: var(--card-background);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+/* Status Panel */
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.status-header h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.current-status {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.status-indicator {
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.status-indicator.on {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.status-indicator.off {
+    background-color: var(--text-secondary);
+    color: white;
+}
+
+.status-indicator.running {
+    background-color: var(--secondary-color);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.stopped {
+    background-color: var(--text-secondary);
+    color: white;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-item {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--background-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.status-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.status-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.last-update,
+.system-timestamp {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.connection-warning {
+    color: var(--warning-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Control Components */
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.control-header h2 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.control-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.control-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.control-section h3 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+/* Form Controls */
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-color);
+    outline: none;
+    margin: 0.5rem 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.brightness-marks,
+.duration-marks,
+.interval-marks,
+.range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+input[type="time"],
+input[type="number"] {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 150px;
+}
+
+input[type="checkbox"] {
+    margin-right: 0.5rem;
+    transform: scale(1.2);
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Buttons */
+.toggle-button,
+.water-button,
+.update-button,
+.save-button,
+.retry-button,
+.health-check-button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.toggle-button.on,
+.save-button,
+.update-button {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.toggle-button.off {
+    background-color: var(--text-secondary);
+    color: white;
+}
+
+.water-button.manual {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.retry-button {
+    background-color: var(--warning-color);
+    color: white;
+    margin-left: 1rem;
+}
+
+.health-check-button {
+    background-color: var(--secondary-color);
+    color: white;
+    margin-bottom: 1rem;
+}
+
+button:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Alerts */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid;
+    font-weight: 500;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+
+.alert.emergency {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+    border-width: 2px;
+    font-weight: bold;
+}
+
+/* Loading States */
+.loading-spinner {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.loading-spinner::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Status Information */
+.status-info,
+.health-indicators {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.status-info h3,
+.health-title {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background-color: var(--background-color);
+    border-radius: 4px;
+}
+
+.info-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.info-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.info-value.error {
+    color: var(--error-color);
+}
+
+.info-value.success {
+    color: var(--success-color);
+}
+
+/* Health Indicators */
+.health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+}
+
+.health-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    background-color: var(--background-color);
+    border-radius: 4px;
+}
+
+.health-indicator.healthy {
+    color: var(--success-color);
+}
+
+.health-indicator.unhealthy {
+    color: var(--error-color);
+}
+
+/* Settings Page */
+.settings-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.settings-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.settings-header h1 {
+    font-size: 2.5rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.settings-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+.settings-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .settings-grid {
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    }
+}
+
+.settings-section {
+    background: var(--card-background);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.settings-section h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.setting-group {
+    margin-bottom: 1.5rem;
+}
+
+.schedule-settings,
+.watering-settings {
+    background-color: var(--background-color);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-top: 1rem;
+}
+
+.setting-row {
+    margin-bottom: 1rem;
+}
+
+.time-input {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.time-input label {
+    min-width: 100px;
+    margin-bottom: 0;
+}
+
+/* System Info */
+.system-info {
+    background-color: var(--background-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-top: 1rem;
+}
+
+.info-block {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.info-block h3 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.info-block ul {
+    list-style: none;
+    padding: 0;
+}
+
+.info-block li {
+    padding: 0.25rem 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* Special Indicators */
+.running-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--secondary-color);
+    font-weight: 500;
+    animation: pulse 2s infinite;
+}
+
+.watering-active {
+    text-align: center;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background-color: rgba(52, 152, 219, 0.1);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--secondary-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .app-header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .app-header h1 {
+        font-size: 2rem;
+    }
+    
+    .app-main {
+        padding: 1rem;
+    }
+    
+    .status-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+    
+    .status-header,
+    .control-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .current-status {
+        justify-content: flex-start;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .health-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+    
+    .settings-page {
+        padding: 1rem;
+    }
+    
+    .settings-header h1 {
+        font-size: 2rem;
+    }
+    
+    .time-input {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .app-header,
+    .app-footer,
+    .toggle-button,
+    .water-button,
+    .update-button,
+    .save-button,
+    .retry-button,
+    .health-check-button {
+        display: none;
+    }
+    
+    .plant-wall-app {
+        background: white;
+    }
+    
+    .status-panel,
+    .settings-section {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        page-break-inside: avoid;
+    }
+}

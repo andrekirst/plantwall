@@ -1,0 +1,57 @@
+[Unit]
+Description=Plant Wall Control System
+Documentation=https://github.com/andrekirst/plantwall
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=exec
+User=plantwall
+Group=plantwall
+WorkingDirectory=/opt/plant-wall-control
+ExecStart=/opt/plant-wall-control/plant-wall-control
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Environment configuration
+Environment=PWC_CONFIG_PATH=/etc/plant-wall-control/config.yaml
+Environment=PWC_LOG_LEVEL=info
+Environment=GOMEMLIMIT=200MiB
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/plant-wall-control /var/lib/plant-wall-control /sys/class/gpio /dev/gpiomem /dev/i2c-1 /dev/spidev0.0 /dev/spidev0.1
+
+# GPIO and hardware access
+SupplementaryGroups=gpio i2c spi dialout
+
+# Memory and resource limits (optimized for Pi Zero 2W)
+MemoryMax=150M
+MemorySwapMax=0
+TasksMax=50
+
+# Restart configuration
+Restart=always
+RestartSec=5
+RestartPreventExitStatus=1
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Process management
+LimitNOFILE=1024
+LimitNPROC=32
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=plant-wall-control
+
+[Install]
+WantedBy=multi-user.target
