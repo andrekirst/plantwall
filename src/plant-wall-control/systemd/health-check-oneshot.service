@@ -1,0 +1,34 @@
+[Unit]
+Description=Plant Wall Control Health Check (One-shot)
+Documentation=https://github.com/andrekirst/plantwall
+After=plant-wall-control.service
+Wants=plant-wall-control.service
+
+[Service]
+Type=oneshot
+User=plantwall
+Group=plantwall
+WorkingDirectory=/opt/plant-wall-control
+ExecStart=/opt/plant-wall-control/systemd/health-check.sh
+
+# Environment
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/plant-wall-control /var/lib/plant-wall-control
+
+# Resource limits
+MemoryMax=50M
+TasksMax=10
+
+# Timeout for health check
+TimeoutStartSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=plant-wall-health-check

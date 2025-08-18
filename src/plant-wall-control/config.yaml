@@ -1,0 +1,33 @@
+# Plant Wall Control System Configuration
+# Optimized for Raspberry Pi Zero 2W
+
+server:
+  host: "0.0.0.0"  # Listen on all interfaces
+  port: "5000"     # Backend API port
+
+hardware:
+  # GPIO pin assignments for Raspberry Pi
+  lighting_pin: 18    # PWM capable pin for LED brightness control
+  watering_pin: 19    # Digital output for water pump relay
+  nutrient_pin: 20    # Digital output for nutrient pump relay
+  
+  # Sensor pins (adjust based on your sensor configuration)
+  sensor_pins:
+    - 21  # Temperature/Humidity sensor (DHT22)
+    - 22  # Soil moisture sensor (analog via ADC)
+    - 23  # Water level sensor (analog via ADC)
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"  # Structured logging for better analysis
+
+# System behavior settings
+system:
+  # How often to read sensors (seconds)
+  sensor_read_interval: 5
+  
+  # Safety limits
+  max_watering_duration: 30  # Maximum seconds per watering cycle
+  min_soil_moisture: 20      # Minimum moisture level to trigger watering
+  max_daily_waterings: 6     # Safety limit for waterings per day

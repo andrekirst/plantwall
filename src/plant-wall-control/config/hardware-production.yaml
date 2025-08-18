@@ -1,0 +1,407 @@
+# Plant Wall Control System - Production Hardware Configuration
+# Optimized for Raspberry Pi Zero 2W with real hardware components
+# Version: 1.0.0
+
+# Server Configuration
+server:
+  host: "0.0.0.0"  # Listen on all interfaces for remote access
+  port: "5000"     # Backend API port
+  read_timeout: 30 # seconds
+  write_timeout: 30 # seconds
+  idle_timeout: 120 # seconds
+
+# Hardware Configuration - Production Environment
+hardware:
+  # Operating mode
+  mock_mode: false
+  simulation_mode: false
+  
+  # GPIO Pin Assignments (Raspberry Pi Zero 2W)
+  pins:
+    # Lighting Control
+    lighting_pwm: 18        # Hardware PWM for LED brightness (BCM 18)
+    lighting_enable: 19     # LED strip enable/disable (BCM 19)
+    
+    # Water System Control
+    water_pump: 20          # 12V water pump relay (BCM 20)
+    plant_valves:           # Individual plant module valves
+      - 21                  # Plant module 1 valve (BCM 21)
+      - 22                  # Plant module 2 valve (BCM 22)
+      - 23                  # Plant module 3 valve (BCM 23)
+      - 24                  # Plant module 4 valve (BCM 24)
+    
+    # Sensor Inputs
+    dht_sensor: 4           # DHT22 temperature/humidity (BCM 4)
+    flow_sensor: 17         # Water flow sensor interrupt (BCM 17)
+    
+    # Status Indicators
+    status_leds:
+      red: 5                # System error LED (BCM 5)
+      green: 6              # System OK LED (BCM 6)  
+      blue: 13              # System activity LED (BCM 13)
+    
+    # Emergency Controls
+    emergency_stop: 26      # Emergency stop button (BCM 26)
+    reset_button: 16        # System reset button (BCM 16)
+
+  # I2C Configuration
+  i2c:
+    bus: 1                  # I2C bus number (usually 1 on Pi)
+    frequency: 400000       # 400kHz fast mode
+    
+    # I2C Device Addresses
+    devices:
+      tsl2591_light: 0x29   # TSL2591 light sensor
+      ssd1306_display: 0x3C # SSD1306 OLED display (optional)
+      bme280_sensor: 0x76   # BME280 environmental sensor (optional)
+
+  # SPI Configuration  
+  spi:
+    bus: 0                  # SPI bus
+    device: 0               # CE0
+    speed: 1000000          # 1MHz SPI clock
+    
+    # MCP3008 ADC Configuration
+    mcp3008:
+      channels: 8
+      vref: 3.3             # Reference voltage
+      
+      # Channel assignments
+      channel_map:
+        soil_moisture_1: 0  # Plant module 1 soil moisture
+        soil_moisture_2: 1  # Plant module 2 soil moisture  
+        soil_moisture_3: 2  # Plant module 3 soil moisture
+        soil_moisture_4: 3  # Plant module 4 soil moisture
+        ph_sensor: 4        # pH sensor for nutrient solution
+        ec_sensor: 5        # EC sensor for nutrient concentration
+        water_level: 6      # Water reservoir level sensor
+        ambient_light: 7    # Backup ambient light sensor
+
+  # PWM Configuration
+  pwm:
+    # Hardware PWM (preferred for lighting)
+    hardware:
+      chip: 0               # PWM chip
+      channel: 0            # PWM channel
+      frequency: 1000       # 1kHz PWM frequency for LED dimming
+      
+    # Software PWM fallback
+    software:
+      frequency: 100        # 100Hz for software PWM
+
+# Sensor Configuration
+sensors:
+  # Reading intervals (seconds)
+  read_interval: 5          # How often to read all sensors
+  
+  # DHT22 Temperature/Humidity Sensor
+  dht22:
+    pin: 4
+    retry_count: 3
+    retry_delay: 2          # seconds between retries
+    
+    # Calibration offsets
+    temperature_offset: 0.0  # °C offset for calibration
+    humidity_offset: 0.0     # % offset for calibration
+    
+    # Validation ranges
+    temperature_range:
+      min: -40.0            # °C
+      max: 80.0             # °C
+    humidity_range:
+      min: 0.0              # %
+      max: 100.0            # %
+
+  # TSL2591 Light Sensor
+  tsl2591:
+    address: 0x29
+    gain: "AUTO"            # AUTO, LOW, MED, HIGH, MAX
+    integration_time: 100   # milliseconds (100, 200, 300, 400, 500, 600)
+    
+  # Soil Moisture Sensors (Capacitive)
+  soil_moisture:
+    calibration:
+      # Calibration values for capacitive sensors (0-1023 ADC range)
+      air_value: 850        # Sensor reading in dry air
+      water_value: 400      # Sensor reading in water
+    
+    # Per-module calibration (if different)
+    modules:
+      1:
+        air_value: 850
+        water_value: 400
+      2:
+        air_value: 860
+        water_value: 390
+      3:
+        air_value: 840
+        water_value: 410
+      4:
+        air_value: 855
+        water_value: 405
+
+  # Water Flow Sensor
+  flow_sensor:
+    pin: 17
+    pulses_per_liter: 450   # Sensor-specific calibration
+    debounce_time: 50       # milliseconds
+
+  # Water Level Sensor (Ultrasonic or pressure)
+  water_level:
+    type: "pressure"        # "ultrasonic" or "pressure"
+    adc_channel: 6
+    
+    # Pressure sensor calibration
+    pressure_sensor:
+      voltage_min: 0.5      # V (sensor minimum)
+      voltage_max: 4.5      # V (sensor maximum)
+      level_min: 0          # cm (tank empty)
+      level_max: 50         # cm (tank full)
+
+  # pH Sensor
+  ph_sensor:
+    adc_channel: 4
+    calibration:
+      ph4_voltage: 3.226    # Voltage at pH 4 buffer
+      ph7_voltage: 2.500    # Voltage at pH 7 buffer  
+      ph10_voltage: 1.774   # Voltage at pH 10 buffer
+
+  # EC (Electrical Conductivity) Sensor
+  ec_sensor:
+    adc_channel: 5
+    temperature_compensation: true
+    calibration:
+      k_value: 1.0          # Cell constant
+      reference_temperature: 25.0  # °C
+
+# Water System Configuration
+watering:
+  # Safety limits
+  max_duration_per_cycle: 30    # seconds
+  max_cycles_per_day: 6         # per plant module
+  min_interval_between_cycles: 3600  # seconds (1 hour)
+  
+  # Flow monitoring
+  flow_monitoring:
+    enabled: true
+    min_flow_rate: 0.1      # L/min minimum expected flow
+    max_flow_rate: 2.0      # L/min maximum expected flow
+    no_flow_timeout: 10     # seconds before emergency stop
+  
+  # Emergency conditions
+  emergency_stop_conditions:
+    no_flow: true           # Stop if no flow detected
+    overflow: true          # Stop if water level too high
+    sensor_failure: true    # Stop if critical sensor fails
+  
+  # Per-module settings
+  modules:
+    1:
+      enabled: true
+      soil_moisture_threshold: 30  # % - water when below this
+      watering_duration: 5         # seconds
+    2:
+      enabled: true  
+      soil_moisture_threshold: 30
+      watering_duration: 5
+    3:
+      enabled: true
+      soil_moisture_threshold: 30
+      watering_duration: 5
+    4:
+      enabled: true
+      soil_moisture_threshold: 30
+      watering_duration: 5
+
+# Lighting System Configuration
+lighting:
+  # LED strip configuration
+  type: "led_strip"         # "led_strip", "grow_lights", "mixed"
+  max_power: 24             # Watts
+  voltage: 24               # Volts
+  
+  # PWM control
+  pwm_frequency: 1000       # Hz
+  brightness_range:
+    min: 0                  # 0-100%
+    max: 100                # 0-100%
+  
+  # Automatic lighting schedule
+  auto_schedule:
+    enabled: true
+    
+    # Daily light cycle
+    schedule:
+      # Time format: "HH:MM"
+      sunrise: "06:00"      # Start of day cycle
+      sunset: "22:00"       # End of day cycle
+      
+      # Brightness levels (0-100%)
+      day_brightness: 80
+      night_brightness: 0
+      
+      # Transition times (minutes)
+      sunrise_transition: 30
+      sunset_transition: 30
+  
+  # Light sensor integration
+  light_sensor:
+    enabled: true
+    auto_adjust: true       # Adjust based on ambient light
+    target_ppfd: 200        # μmol/m²/s target for plants
+    
+    # Ambient light thresholds
+    thresholds:
+      very_bright: 50000    # lux - reduce LED output
+      bright: 20000         # lux - normal operation
+      dim: 5000             # lux - increase LED output
+      dark: 1000            # lux - maximum LED output
+
+# Display Configuration (Optional OLED)
+display:
+  enabled: true
+  type: "ssd1306"           # "ssd1306", "none"
+  i2c_address: 0x3C
+  width: 128
+  height: 64
+  
+  # Display rotation and orientation
+  rotation: 0               # 0, 90, 180, 270 degrees
+  
+  # Screen timeout
+  timeout: 300              # seconds (0 = never timeout)
+  
+  # Information to display
+  screens:
+    - name: "status"
+      duration: 10          # seconds
+      content:
+        - "Plant Wall Status"
+        - "Temp: {temperature}°C"
+        - "Humidity: {humidity}%"
+        - "Light: {light_level} lux"
+        
+    - name: "watering"
+      duration: 10
+      content:
+        - "Water System"
+        - "Level: {water_level}%"
+        - "Flow: {flow_rate} L/min"
+        - "Last: {last_watering}"
+        
+    - name: "plants"
+      duration: 10
+      content:
+        - "Plant Modules"
+        - "M1:{soil1}% M2:{soil2}%"
+        - "M3:{soil3}% M4:{soil4}%"
+        - "Next: {next_watering}"
+
+# Safety and Monitoring
+safety:
+  # Temperature limits
+  temperature:
+    min: 5.0                # °C - minimum safe temperature
+    max: 40.0               # °C - maximum safe temperature
+    emergency_max: 45.0     # °C - emergency shutdown temperature
+  
+  # Humidity limits
+  humidity:
+    min: 20.0               # % - minimum humidity
+    max: 95.0               # % - maximum humidity
+  
+  # Water level monitoring
+  water_level:
+    min: 10.0               # % - minimum level warning
+    critical: 5.0           # % - critical level (stop watering)
+    max: 95.0               # % - maximum level (overflow protection)
+  
+  # System monitoring
+  monitoring:
+    health_check_interval: 60    # seconds
+    sensor_failure_timeout: 300  # seconds
+    auto_recovery: true
+    
+    # Watchdog configuration
+    watchdog:
+      enabled: true
+      timeout: 30           # seconds
+      test_interval: 10     # seconds
+
+# Logging Configuration
+logging:
+  level: "info"             # debug, info, warn, error
+  format: "json"            # json, text
+  
+  # Log rotation
+  rotation:
+    max_size: 100           # MB
+    max_age: 30             # days
+    max_backups: 10
+    compress: true
+  
+  # Log destinations
+  outputs:
+    - type: "file"
+      path: "/var/log/plant-wall-control/application.log"
+    - type: "stdout"
+      enabled: true
+    - type: "syslog"
+      enabled: true
+      facility: "local0"
+
+# Network Configuration
+network:
+  # WiFi settings
+  wifi:
+    power_save: false       # Disable power saving for IoT reliability
+    scan_interval: 30       # seconds
+    
+  # API settings
+  api:
+    cors_enabled: true
+    cors_origins:
+      - "http://localhost:3000"     # Frontend development
+      - "http://192.168.1.0/24"     # Local network
+    
+    # Rate limiting
+    rate_limit:
+      enabled: true
+      requests_per_minute: 60
+      burst_size: 10
+  
+  # Remote monitoring
+  remote_access:
+    enabled: false          # Enable for remote monitoring
+    vpn_required: true      # Require VPN for security
+    
+# Data Storage
+storage:
+  # Sensor data retention
+  sensor_data:
+    retention_days: 90      # Keep 90 days of sensor data
+    aggregation_interval: 300  # seconds (5 minutes)
+    
+  # System logs
+  system_logs:
+    retention_days: 30
+    
+  # Configuration backup
+  config_backup:
+    enabled: true
+    interval_hours: 24      # Backup every 24 hours
+    max_backups: 10
+
+# System Information
+system:
+  name: "Plant Wall Control"
+  version: "1.0.0"
+  environment: "production"
+  location: "Home Garden"
+  timezone: "Europe/Berlin"
+  
+  # Hardware identification
+  hardware:
+    model: "Raspberry Pi Zero 2W"
+    revision: "auto-detect"
+    serial: "auto-detect"

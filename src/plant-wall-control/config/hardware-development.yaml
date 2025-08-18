@@ -1,0 +1,517 @@
+# Plant Wall Control System - Development Hardware Configuration
+# Mock hardware mode for development and testing without physical components
+# Version: 1.0.0
+
+# Server Configuration
+server:
+  host: "127.0.0.1"   # Local development only
+  port: "5000"        # Backend API port
+  read_timeout: 10    # seconds - shorter for development
+  write_timeout: 10   # seconds
+  idle_timeout: 60    # seconds
+
+# Hardware Configuration - Development Environment
+hardware:
+  # Operating mode
+  mock_mode: true           # Enable mock hardware simulation
+  simulation_mode: true     # Enable advanced simulation features
+  verbose_logging: true     # Extra debug output
+  
+  # GPIO Pin Assignments (same as production for code compatibility)
+  pins:
+    # Lighting Control
+    lighting_pwm: 18        # Hardware PWM for LED brightness (BCM 18)
+    lighting_enable: 19     # LED strip enable/disable (BCM 19)
+    
+    # Water System Control
+    water_pump: 20          # 12V water pump relay (BCM 20)
+    plant_valves:           # Individual plant module valves
+      - 21                  # Plant module 1 valve (BCM 21)
+      - 22                  # Plant module 2 valve (BCM 22)
+      - 23                  # Plant module 3 valve (BCM 23)
+      - 24                  # Plant module 4 valve (BCM 24)
+    
+    # Sensor Inputs (simulated)
+    dht_sensor: 4           # DHT22 temperature/humidity (BCM 4)
+    flow_sensor: 17         # Water flow sensor interrupt (BCM 17)
+    
+    # Status Indicators
+    status_leds:
+      red: 5                # System error LED (BCM 5)
+      green: 6              # System OK LED (BCM 6)  
+      blue: 13              # System activity LED (BCM 13)
+    
+    # Emergency Controls (simulated)
+    emergency_stop: 26      # Emergency stop button (BCM 26)
+    reset_button: 16        # System reset button (BCM 16)
+
+  # Mock I2C Configuration
+  i2c:
+    bus: 1                  # Simulated I2C bus
+    frequency: 400000       # 400kHz fast mode
+    
+    # Simulated I2C Device Addresses
+    devices:
+      tsl2591_light: 0x29   # TSL2591 light sensor (simulated)
+      ssd1306_display: 0x3C # SSD1306 OLED display (simulated)
+      bme280_sensor: 0x76   # BME280 environmental sensor (simulated)
+
+  # Mock SPI Configuration  
+  spi:
+    bus: 0                  # Simulated SPI bus
+    device: 0               # CE0
+    speed: 1000000          # 1MHz SPI clock
+    
+    # Simulated MCP3008 ADC Configuration
+    mcp3008:
+      channels: 8
+      vref: 3.3             # Reference voltage
+      
+      # Channel assignments (same as production)
+      channel_map:
+        soil_moisture_1: 0  # Plant module 1 soil moisture
+        soil_moisture_2: 1  # Plant module 2 soil moisture  
+        soil_moisture_3: 2  # Plant module 3 soil moisture
+        soil_moisture_4: 3  # Plant module 4 soil moisture
+        ph_sensor: 4        # pH sensor for nutrient solution
+        ec_sensor: 5        # EC sensor for nutrient concentration
+        water_level: 6      # Water reservoir level sensor
+        ambient_light: 7    # Backup ambient light sensor
+
+  # Mock PWM Configuration
+  pwm:
+    # Simulated Hardware PWM
+    hardware:
+      chip: 0               # PWM chip
+      channel: 0            # PWM channel
+      frequency: 1000       # 1kHz PWM frequency for LED dimming
+      
+    # Software PWM simulation
+    software:
+      frequency: 100        # 100Hz for software PWM
+
+# Development Sensor Simulation
+sensors:
+  # Reading intervals (seconds) - faster for development
+  read_interval: 2          # How often to read all sensors
+  
+  # Simulation parameters
+  simulation:
+    # Add realistic noise and variations
+    enable_noise: true
+    noise_level: 0.05       # 5% random variation
+    
+    # Simulate sensor failures for testing
+    random_failures:
+      enabled: false        # Enable random sensor failures
+      failure_rate: 0.001   # 0.1% chance per reading
+      recovery_time: 30     # seconds to recover
+  
+  # DHT22 Temperature/Humidity Sensor (Simulated)
+  dht22:
+    pin: 4
+    retry_count: 1          # Faster retries for development
+    retry_delay: 0.5        # seconds between retries
+    
+    # Simulated values
+    simulation:
+      base_temperature: 22.0    # °C base temperature
+      temperature_range: 5.0    # °C variation range
+      base_humidity: 60.0       # % base humidity  
+      humidity_range: 20.0      # % variation range
+      
+      # Seasonal simulation
+      seasonal_variation: true
+      daily_cycle: true         # Simulate day/night cycle
+    
+    # Calibration offsets (same as production)
+    temperature_offset: 0.0  # °C offset for calibration
+    humidity_offset: 0.0     # % offset for calibration
+    
+    # Validation ranges
+    temperature_range:
+      min: -40.0            # °C
+      max: 80.0             # °C
+    humidity_range:
+      min: 0.0              # %
+      max: 100.0            # %
+
+  # TSL2591 Light Sensor (Simulated)
+  tsl2591:
+    address: 0x29
+    gain: "AUTO"
+    integration_time: 100   # milliseconds
+    
+    # Simulated light levels
+    simulation:
+      indoor_base: 500      # lux indoor base level
+      outdoor_base: 10000   # lux outdoor base level  
+      daily_cycle: true     # Simulate sunrise/sunset
+      weather_variation: true  # Simulate cloudy/sunny days
+
+  # Soil Moisture Sensors (Simulated)
+  soil_moisture:
+    calibration:
+      # Calibration values for capacitive sensors
+      air_value: 850        # Sensor reading in dry air
+      water_value: 400      # Sensor reading in water
+    
+    # Simulated soil moisture behavior
+    simulation:
+      # Initial moisture levels per module
+      initial_levels: [45, 50, 40, 55]  # % for modules 1-4
+      
+      # Moisture decrease rate (% per hour)
+      evaporation_rate: 2.0
+      
+      # Random variation
+      random_variation: 5.0  # % random change
+    
+    # Per-module calibration (same as production)
+    modules:
+      1:
+        air_value: 850
+        water_value: 400
+      2:
+        air_value: 860
+        water_value: 390
+      3:
+        air_value: 840
+        water_value: 410
+      4:
+        air_value: 855
+        water_value: 405
+
+  # Water Flow Sensor (Simulated)
+  flow_sensor:
+    pin: 17
+    pulses_per_liter: 450   # Sensor-specific calibration
+    debounce_time: 50       # milliseconds
+    
+    # Simulated flow behavior
+    simulation:
+      normal_flow_rate: 1.2    # L/min when pump is on
+      flow_variation: 0.1      # L/min random variation
+      response_delay: 2        # seconds to reach full flow
+
+  # Water Level Sensor (Simulated)
+  water_level:
+    type: "pressure"        # "ultrasonic" or "pressure"
+    adc_channel: 6
+    
+    # Simulated water level
+    simulation:
+      initial_level: 75     # % initial tank level
+      consumption_rate: 0.5 # % per watering cycle
+      refill_simulation: true  # Simulate manual refills
+    
+    # Pressure sensor calibration (same as production)
+    pressure_sensor:
+      voltage_min: 0.5      # V (sensor minimum)
+      voltage_max: 4.5      # V (sensor maximum)
+      level_min: 0          # cm (tank empty)
+      level_max: 50         # cm (tank full)
+
+  # pH Sensor (Simulated)
+  ph_sensor:
+    adc_channel: 4
+    
+    # Simulated pH behavior
+    simulation:
+      base_ph: 6.8          # Base pH value
+      variation: 0.3        # pH units variation
+      drift_rate: 0.01      # pH units per hour drift
+    
+    calibration:
+      ph4_voltage: 3.226    # Voltage at pH 4 buffer
+      ph7_voltage: 2.500    # Voltage at pH 7 buffer  
+      ph10_voltage: 1.774   # Voltage at pH 10 buffer
+
+  # EC (Electrical Conductivity) Sensor (Simulated)
+  ec_sensor:
+    adc_channel: 5
+    temperature_compensation: true
+    
+    # Simulated EC behavior
+    simulation:
+      base_ec: 1.2          # mS/cm base conductivity
+      variation: 0.2        # mS/cm variation
+      temperature_coefficient: 0.02  # Change per °C
+    
+    calibration:
+      k_value: 1.0          # Cell constant
+      reference_temperature: 25.0  # °C
+
+# Water System Configuration (Development)
+watering:
+  # Safety limits (more permissive for testing)
+  max_duration_per_cycle: 10    # seconds (shorter for development)
+  max_cycles_per_day: 20        # More cycles for testing
+  min_interval_between_cycles: 60  # seconds (1 minute for faster testing)
+  
+  # Flow monitoring (simulated)
+  flow_monitoring:
+    enabled: true
+    min_flow_rate: 0.1      # L/min minimum expected flow
+    max_flow_rate: 2.0      # L/min maximum expected flow
+    no_flow_timeout: 5      # seconds (shorter for development)
+  
+  # Emergency conditions (less strict for development)
+  emergency_stop_conditions:
+    no_flow: false          # Disabled for simulation
+    overflow: true          
+    sensor_failure: false   # Disabled for development
+  
+  # Per-module settings (faster watering for testing)
+  modules:
+    1:
+      enabled: true
+      soil_moisture_threshold: 40  # % - higher threshold for more frequent watering
+      watering_duration: 3         # seconds (shorter for development)
+    2:
+      enabled: true  
+      soil_moisture_threshold: 35
+      watering_duration: 3
+    3:
+      enabled: true
+      soil_moisture_threshold: 45
+      watering_duration: 3
+    4:
+      enabled: true
+      soil_moisture_threshold: 30
+      watering_duration: 3
+
+# Lighting System Configuration (Development)
+lighting:
+  # LED strip configuration (simulated)
+  type: "led_strip"         
+  max_power: 24             # Watts
+  voltage: 24               # Volts
+  
+  # PWM control (simulated)
+  pwm_frequency: 1000       # Hz
+  brightness_range:
+    min: 0                  # 0-100%
+    max: 100                # 0-100%
+  
+  # Automatic lighting schedule (accelerated for development)
+  auto_schedule:
+    enabled: true
+    
+    # Accelerated daily light cycle for testing
+    schedule:
+      sunrise: "08:00"      # Start of day cycle
+      sunset: "20:00"       # End of day cycle
+      
+      # Brightness levels
+      day_brightness: 60    # Lower for development
+      night_brightness: 0
+      
+      # Faster transitions for testing
+      sunrise_transition: 5  # minutes
+      sunset_transition: 5   # minutes
+  
+  # Light sensor integration (simulated)
+  light_sensor:
+    enabled: true
+    auto_adjust: true       
+    target_ppfd: 200        # μmol/m²/s target for plants
+    
+    # Simulated ambient light thresholds
+    thresholds:
+      very_bright: 50000    
+      bright: 20000         
+      dim: 5000             
+      dark: 1000            
+
+# Display Configuration (Simulated OLED)
+display:
+  enabled: true
+  type: "ssd1306"           # Simulated SSD1306
+  i2c_address: 0x3C
+  width: 128
+  height: 64
+  
+  # Console output simulation
+  console_output: true      # Print display content to console
+  
+  # Display rotation and orientation
+  rotation: 0               
+  
+  # Screen timeout (shorter for development)
+  timeout: 60               # seconds
+  
+  # Information to display (same as production)
+  screens:
+    - name: "status"
+      duration: 5           # Faster screen changes
+      content:
+        - "Plant Wall Status"
+        - "Temp: {temperature}°C"
+        - "Humidity: {humidity}%"
+        - "Light: {light_level} lux"
+        
+    - name: "watering"
+      duration: 5
+      content:
+        - "Water System"
+        - "Level: {water_level}%"
+        - "Flow: {flow_rate} L/min"
+        - "Last: {last_watering}"
+        
+    - name: "plants"
+      duration: 5
+      content:
+        - "Plant Modules"
+        - "M1:{soil1}% M2:{soil2}%"
+        - "M3:{soil3}% M4:{soil4}%"
+        - "Next: {next_watering}"
+
+# Safety and Monitoring (Development)
+safety:
+  # Temperature limits (more permissive for development)
+  temperature:
+    min: 0.0                
+    max: 50.0               
+    emergency_max: 60.0     
+  
+  # Humidity limits
+  humidity:
+    min: 10.0               
+    max: 99.0               
+  
+  # Water level monitoring (simulated)
+  water_level:
+    min: 5.0                # % - lower threshold for testing
+    critical: 2.0           # % - critical level
+    max: 98.0               # % - maximum level
+  
+  # System monitoring (faster for development)
+  monitoring:
+    health_check_interval: 10    # seconds (faster checks)
+    sensor_failure_timeout: 60   # seconds (shorter timeout)
+    auto_recovery: true
+    
+    # Watchdog configuration (disabled for development)
+    watchdog:
+      enabled: false        # Disabled for development
+      timeout: 30           
+      test_interval: 10     
+
+# Logging Configuration (Development)
+logging:
+  level: "debug"            # More verbose logging for development
+  format: "text"            # Human-readable format
+  
+  # Development-friendly log settings
+  include_caller: true      # Include file and line numbers
+  include_stack_trace: true # Include stack traces for errors
+  
+  # Log rotation (smaller files for development)
+  rotation:
+    max_size: 10            # MB (smaller for development)
+    max_age: 7              # days
+    max_backups: 5
+    compress: false         # Don't compress for easier viewing
+  
+  # Log destinations
+  outputs:
+    - type: "file"
+      path: "/tmp/plant-wall-control-dev.log"  # Temporary location
+    - type: "stdout"
+      enabled: true
+      color: true           # Colored output for development
+
+# Network Configuration (Development)
+network:
+  # WiFi settings (not applicable in development)
+  wifi:
+    power_save: false       
+    scan_interval: 60       
+    
+  # API settings (development-friendly)
+  api:
+    cors_enabled: true
+    cors_origins:
+      - "http://localhost:3000"     # Frontend development
+      - "http://localhost:3001"     # Alternative port
+      - "http://127.0.0.1:3000"     # Explicit localhost
+    
+    # Rate limiting (disabled for development)
+    rate_limit:
+      enabled: false        # Disabled for easier development
+      requests_per_minute: 1000
+      burst_size: 100
+  
+  # Remote monitoring (disabled for development)
+  remote_access:
+    enabled: false          
+    vpn_required: false     
+
+# Data Storage (Development)
+storage:
+  # Sensor data retention (shorter for development)
+  sensor_data:
+    retention_days: 7       # Keep 7 days only
+    aggregation_interval: 60  # seconds (1 minute for faster testing)
+    
+  # System logs
+  system_logs:
+    retention_days: 3       # Shorter retention
+    
+  # Configuration backup (disabled for development)
+  config_backup:
+    enabled: false          # Not needed for development
+
+# Development-specific features
+development:
+  # API testing endpoints
+  test_endpoints:
+    enabled: true           # Enable test endpoints
+    prefix: "/test"         # Test endpoint prefix
+  
+  # Mock data generation
+  mock_data:
+    enabled: true
+    scenarios:
+      - name: "normal_operation"
+        description: "Normal plant growth conditions"
+        duration: 3600      # seconds
+        
+      - name: "dry_soil"
+        description: "Simulate dry soil conditions"
+        soil_moisture_override: 15  # %
+        
+      - name: "low_light"
+        description: "Simulate low light conditions"
+        light_level_override: 100   # lux
+        
+      - name: "high_temperature"
+        description: "Simulate high temperature"
+        temperature_override: 35    # °C
+  
+  # Performance testing
+  performance:
+    enable_metrics: true    # Enable performance metrics collection
+    slow_query_threshold: 100  # ms
+    memory_monitoring: true
+  
+  # Hot reload configuration
+  hot_reload:
+    enabled: true           # Enable configuration hot reload
+    watch_files:
+      - "/config/hardware-development.yaml"
+    
+# System Information
+system:
+  name: "Plant Wall Control (Development)"
+  version: "1.0.0-dev"
+  environment: "development"
+  location: "Development Machine"
+  timezone: "Europe/Berlin"
+  
+  # Hardware identification (simulated)
+  hardware:
+    model: "Development Environment"
+    revision: "mock"
+    serial: "dev-12345"

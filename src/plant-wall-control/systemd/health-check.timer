@@ -1,0 +1,13 @@
+[Unit]
+Description=Plant Wall Control Health Check Timer
+Documentation=https://github.com/andrekirst/plantwall
+Requires=plant-wall-control.service
+
+[Timer]
+# Run health check every 5 minutes
+OnCalendar=*:0/5
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
