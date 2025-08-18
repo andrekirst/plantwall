@@ -21,6 +21,7 @@ Plant wall control system with dual architecture:
 - **IoT Sensoren**: `@iot-sensoren-experte`
 - **Smart Home**: `@home-assistant-experte`
 - **Pflanzenwand**: `@pflanzenwand-experte`
+- **Elektronik & IoT-Verbindungen**: `@elektronik-experte`
 
 Beispiele:
 ```
@@ -28,6 +29,7 @@ Beispiele:
 @go-experte Erstelle REST API für Pumpensteuerung
 @nextjs-experte Baue Dashboard für Sensor-Monitoring
 @pflanzenwand-experte Empfehle Pflanzenarten für automatische Bewässerung
+@elektronik-experte Entwirf PCB für Sensormodul mit I2C-Anbindung
 ```
 
 ## Backend Technology Choice
@@ -183,6 +185,7 @@ Verwende spezialisierte Sub-Agenten für spezifische Aufgaben:
 9. **anforderungsmanagement** - Requirements Engineering
 10. **home-assistant-experte** - Home Assistant Integration
 11. **pflanzenwand-experte** - Konstruktion, Pflanzenauswahl und IoT-Integration
+12. **elektronik-experte** - Elektronik, PCB-Design, IoT-Geräte-Verbindungen und Verkabelung
 
 - Beim Beginn eines Issues, wird auf GitHub von main aus ein neuen Branch für einen Issue erzeugt und auf dem gearbeitet. Es wird nie direkt auf main gearbeitet, wenn ein Issue abgearbeitet wird.
 - Wenn du einen Issue bearbeitest, committe sinnvoll und regelmäig, damit keine Arbeit verloren geht
